@@ -1,65 +1,74 @@
-import Image from "next/image";
+const useCases = [
+  { tag: "STUDENTS", title: "Your study space, anywhere.", description: "Open a familiar desktop on any device. Keep research, notes and projects in one calm place.", color: "bg-[#7bc7e9]", art: "notes" },
+  { tag: "CREATORS", title: "Big creative power. No big machine.", description: "Edit, render and design with the performance you need, only for as long as you need it.", color: "bg-[#ff9889]", art: "canvas" },
+  { tag: "BUILDERS", title: "A serious setup in seconds.", description: "Choose your specs, launch a fresh environment and get straight to training, testing or shipping.", color: "bg-[#cce668]", art: "code" },
+];
+
+const marqueeMessage = "YOUR COMPUTER. YOUR WAY.";
+
+function Mark({ light = false }: { light?: boolean }) {
+  const color = light ? "bg-[#c7e65d]" : "bg-[#5979ff]";
+  return <span className="flex h-5 w-[22px] items-end gap-[3px]"><i className={`block w-[5px] rounded-sm ${color} h-2.5`} /><i className={`block w-[5px] rounded-sm ${color} h-4`} /><i className={`block h-5 w-[5px] rounded-sm ${color}`} /></span>;
+}
+
+function CardArt({ kind }: { kind: string }) {
+  if (kind === "notes") return <div className="relative h-40" aria-hidden="true"><span className="absolute left-[24%] top-4 h-32 w-26 rotate-[-6deg] border border-[#d1bb5e] bg-[#fff9df] shadow-[4px_5px_0_#3d5b6e]" /><span className="absolute left-[39%] top-7 h-26 w-21 rotate-[8deg] bg-[#ffec70]" /><span className="absolute left-[28%] top-12 h-2 w-16 bg-[#ff8b7a]" /><span className="absolute left-[28%] top-[68px] h-2 w-13 bg-[#4d75c8]" /></div>;
+  if (kind === "canvas") return <div className="relative h-40" aria-hidden="true"><span className="absolute left-[25%] top-5 h-28 w-37 rotate-[5deg] border-8 border-[#263551] bg-[#f8f7ee] shadow-[7px_7px_0_#e86c61]" /><span className="absolute left-[41%] top-12 size-12 rounded-full bg-[#5d7dfd]" /><span className="absolute left-[50%] top-[84px] size-8 rounded-full bg-[#cce668]" /><span className="absolute left-[30%] top-9 size-[52px] rounded-full bg-[#ffcf55]" /></div>;
+  return <div className="relative h-40" aria-hidden="true"><span className="absolute left-[24%] top-5 flex h-[109px] w-[156px] items-start rounded-md bg-[#20324e] px-5 pt-8 font-mono text-xs text-[#cce668] shadow-[7px_7px_0_#97b640]">&gt;_ train.py</span><span className="absolute left-[17%] top-[95px] size-[22px] rounded-full bg-[#f9f5ea]" /><span className="absolute right-[14%] top-2.5 size-[31px] rounded-full bg-[#ff8f80]" /><span className="absolute left-[17%] top-11 size-3 rounded-full bg-[#5b7aff]" /></div>;
+}
+
+function Marquee() {
+  const items = Array.from({ length: 8 }, (_, index) => index);
+
+  return <div className="overflow-hidden bg-[#5979ff] text-white">
+    <div className="flex w-max animate-marquee items-center font-mono text-xs tracking-widest motion-reduce:animate-none">
+      {items.map((index) => <div className="flex min-h-[51px] shrink-0 items-center gap-6 pr-6" key={index}><span>{marqueeMessage}</span><i className="size-2.5 rounded-full bg-[#c7e65d]" /></div>)}
+    </div>
+  </div>;
+}
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+  return <main className="overflow-hidden bg-[#f7f4ed] font-[ui-sans-serif,system-ui,sans-serif] text-[#17202f] selection:bg-[#c7e65d]">
+    <section id="top" className="bg-[#f8f6f0]">
+      <nav className="mx-auto flex h-[70px] max-w-[1240px] items-center justify-between px-7 md:h-[82px]" aria-label="Main navigation">
+        <a className="flex items-center gap-2 text-[25px] font-bold tracking-[-1.5px]" href="#top" aria-label="nvos home"><Mark />nvos</a>
+        <div className="hidden gap-8 text-sm font-medium md:flex"><a className="hover:text-[#5979ff]" href="#how-it-works">How it works</a><a className="hover:text-[#5979ff]" href="#use-cases">Use cases</a><a className="hover:text-[#5979ff]" href="#pricing">Pricing</a></div>
+        <a className="inline-flex items-center rounded-full bg-[#17202f] px-3 py-2.5 text-[11px] font-semibold !text-white transition-colors hover:bg-[#30415f] sm:px-4 sm:text-[13px]" href="/coming-soon">Launch a computer <span className="ml-2 text-[#c7e65d]">-&gt;</span></a>
+      </nav>
+
+      <div className="mx-auto grid max-w-[1185px] gap-10 px-7 pb-12 pt-10 md:grid-cols-[1fr_1.05fr] md:items-center md:gap-11 md:pt-[42px]">
+        <div className="relative z-10">
+          <p className="mb-5 flex items-center gap-2 font-mono text-[11px] font-medium tracking-wide"><span className="size-2 rounded-full bg-[#fc7866] shadow-[0_0_0_5px_#ffe0db]" />COMPUTERS, ON YOUR TERMS</p>
+          <h1 className="mb-6 text-[clamp(56px,6.2vw,88px)] font-bold leading-[.94] tracking-[-.065em]">More power.<br /><em className="font-[ui-serif,Georgia,serif] font-semibold text-[#5979ff]">Less hardware.</em></h1>
+          <p className="mb-7 max-w-[430px] text-base leading-relaxed text-[#5b6470] md:text-[17px]">A beautiful, personal computer in your browser. Pick what you need, use it when you want, and pay only for the time it is on.</p>
+          <div id="start" className="flex items-center gap-6"><a className="inline-flex items-center rounded-md bg-[#17202f] px-5 py-[15px] text-sm font-semibold !text-white shadow-[4px_4px_0_#fc7866] transition-colors hover:bg-[#30415f]" href="/coming-soon">Build your computer <span className="ml-2 text-[#c7e65d]">-&gt;</span></a><a className="text-sm font-semibold hover:text-[#5979ff]" href="#use-cases">See what&apos;s possible <span className="ml-1 text-lg text-[#fc7866]">+</span></a></div>
+          <p className="mt-11 flex items-center gap-2.5 text-xs text-[#6e737c]"><span className="flex"><i className="size-2.5 rounded-full border-2 border-[#f8f6f0] bg-[#5979ff]" /><i className="-ml-1 size-2.5 rounded-full border-2 border-[#f8f6f0] bg-[#fc7866]" /><i className="-ml-1 size-2.5 rounded-full border-2 border-[#f8f6f0] bg-[#edf1fe]" /></span>Available wherever you are</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        <div className="relative min-h-[330px] pt-5 md:min-h-[420px]" aria-label="Example nvos computer configuration">
+          <div className="absolute left-0 top-0 size-[350px] rounded-full border border-[#c8d3fb] md:left-6 md:size-[455px]" /><div className="absolute left-4 top-9 size-[300px] rounded-full border border-dashed border-[#c8d3fb] md:left-14 md:size-[390px]" />
+          <div className="absolute -left-8 bottom-0 z-20 grid size-[77px] rotate-[-12deg] place-items-center rounded-full bg-[#5979ff] text-center font-[ui-serif,Georgia,serif] text-xs leading-none text-white shadow-[2px_3px_0_#20304c] md:-left-11 md:size-24 md:text-[15px]">made for<br />right now</div><div className="absolute -right-5 -top-4 z-20 grid size-[77px] rotate-[10deg] place-items-center rounded-full bg-[#c7e65d] text-center font-[ui-serif,Georgia,serif] text-xs leading-none shadow-[2px_3px_0_#20304c] md:-right-8 md:size-24 md:text-[15px]">your<br />machine.</div>
+          <div className="relative z-10 w-full rotate-[-2.2deg] overflow-hidden rounded-[15px] bg-white shadow-[16px_17px_0_#cbd6ff,0_25px_70px_#afb4c255]">
+            <div className="flex h-10 items-center justify-between bg-[#eef0f6] px-3.5 font-mono text-[10px] text-[#697284]"><span className="flex gap-1"><i className="size-[7px] rounded-full bg-[#ff8f83]" /><i className="size-[7px] rounded-full bg-[#ffd76b]" /><i className="size-[7px] rounded-full bg-[#75d89d]" /></span><b className="font-normal">nvos / new computer</b><small className="text-base">...</small></div>
+            <div className="flex h-[270px] md:h-[335px]"><aside className="flex w-11 flex-col items-center gap-[18px] bg-[#1d2d4a] py-3.5"><b className="mb-2 text-lg text-[#c7e65d]">n</b><i className="size-4 rounded-full border-2 border-[#5979ff] bg-[#5979ff]" /><i className="size-4 rounded border-2 border-[#a4b5d1]" /><i className="size-4 rounded border-2 border-[#a4b5d1]" /><i className="size-4 rounded border-2 border-[#a4b5d1]" /><b className="mt-auto grid size-[17px] place-items-center rounded-full border border-[#a4b5d1] text-[11px] font-normal text-white">?</b></aside>
+              <div className="flex-1 p-4 md:p-[27px_30px_17px]"><div className="flex justify-between text-[10px] text-[#7b8492]"><span className="font-mono">Let&apos;s make it yours</span><span>Step 1 of 3</span></div><h2 className="my-3 text-[23px] font-bold tracking-[-.065em] md:my-[12px] md:text-[29px]">Choose your power</h2>
+                <div className="grid grid-cols-3 gap-2.5"><button className="rounded-lg border-2 border-[#5979ff] bg-[#eff2ff] p-2 text-left shadow-[inset_0_0_0_1px_#5979ff] md:p-3"><span className="mb-2 grid size-[22px] place-items-center rounded-md bg-[#c7e65d] text-lg">+</span><b className="block text-xs">Everyday</b><small className="my-0.5 block text-[8px] leading-tight text-[#6d7682] md:text-[9px]">Browsing, docs &amp; study</small><i className="block font-mono text-[9px] not-italic text-[#5979ff]">2 cores</i></button><button className="rounded-lg border border-[#e4e6e9] bg-[#f8f8f8] p-2 text-left md:p-3"><span className="mb-2 grid size-[22px] place-items-center rounded-md bg-[#ffd2c9] text-lg">*</span><b className="block text-xs">Creative</b><small className="my-0.5 block text-[8px] leading-tight text-[#6d7682] md:text-[9px]">Design &amp; editing</small><i className="block font-mono text-[9px] not-italic text-[#5979ff]">8 cores</i></button><button className="rounded-lg border border-[#e4e6e9] bg-[#f8f8f8] p-2 text-left md:p-3"><span className="mb-2 grid size-[22px] place-items-center rounded-md bg-[#c4d2ff] text-lg">^</span><b className="block text-xs">Power</b><small className="my-0.5 block text-[8px] leading-tight text-[#6d7682] md:text-[9px]">AI &amp; heavy work</small><i className="block font-mono text-[9px] not-italic text-[#5979ff]">16 cores</i></button></div>
+                <div className="mt-3 flex items-center justify-between border-t border-[#e6e7e9] pt-3 text-[8px] text-[#6c7480] md:mt-4 md:text-[10px]"><span><b className="text-[#17202f]">Everyday</b> / Linux Mint / 8 GB RAM</span><button className="rounded bg-[#17202f] px-2 py-2 text-[9px] text-white md:px-3 md:text-[10px]">Continue <b className="ml-1 text-[#c7e65d]">-&gt;</b></button></div>
+              </div>
+            </div>
+          </div>
+          <div className="absolute bottom-[-23px] right-3 z-20 rotate-[3deg] rounded-md bg-[#fc7866] px-4 py-3 text-white shadow-[3px_3px_0_#20304c]"><span className="block font-mono text-[9px]">STARTING AT</span><b className="text-[22px] tracking-tight">$0.09<small className="text-[11px] font-normal tracking-normal">/ hr</small></b></div>
         </div>
-      </main>
-    </div>
-  );
+      </div>
+      <Marquee />
+    </section>
+
+    <section id="how-it-works" className="mx-auto grid max-w-[1240px] gap-6 px-7 py-[75px] md:grid-cols-[220px_1fr] md:py-[110px]"><p className="font-mono text-[11px] font-medium tracking-wide text-[#6b7482]">01 / SIMPLE BY DESIGN</p><div><h2 className="mb-5 text-[clamp(40px,4.3vw,61px)] font-bold leading-[.94] tracking-[-.065em]">A computer should feel like a tool,<br /><em className="font-[ui-serif,Georgia,serif] font-semibold text-[#5979ff]">not a technical project.</em></h2><p className="max-w-[550px] text-base leading-relaxed text-[#626a76]">nvos gives you a ready-to-go desktop in a few friendly choices. No setup headaches. No long-term commitment.</p></div><div className="grid gap-4 md:col-start-2 md:mt-8 md:grid-cols-3">{[["01", "Pick your power", "From a light everyday desktop to serious GPU muscle."], ["02", "Choose your OS", "Go with Windows, Linux, or the system you already love."], ["03", "Start creating", "Your computer opens in the browser, ready when you are."]].map(([number, title, copy]) => <article className="border-t-2 border-[#17202f] pt-3" key={number}><span className="font-mono text-[10px] text-[#5979ff]">{number}</span><h3 className="mb-1.5 mt-3 text-[17px] font-bold">{title}</h3><p className="max-w-[190px] text-[13px] leading-snug text-[#68717c]">{copy}</p></article>)}</div></section>
+
+    <section id="use-cases" className="bg-[#e7ecff] px-7 py-[75px] md:px-[max(28px,calc((100%-1184px)/2))] md:py-[110px]"><div className="mx-auto max-w-[1184px]"><div className="mb-10 md:grid md:grid-cols-[220px_1fr_auto] md:items-end"><p className="font-mono text-[11px] font-medium tracking-wide text-[#6b7482]">02 / BUILT FOR REAL LIFE</p><h2 className="my-5 text-[clamp(40px,4.3vw,61px)] font-bold leading-[.94] tracking-[-.065em] md:my-0">One cloud.<br /><em className="font-[ui-serif,Georgia,serif] font-semibold text-[#5979ff]">A thousand directions.</em></h2><a className="text-sm font-semibold hover:text-[#5979ff]" href="#start">Find your setup <span className="ml-1 text-lg text-[#fc7866]">-&gt;</span></a></div><div className="grid gap-[18px] md:grid-cols-3">{useCases.map((item) => <article className={`flex min-h-[330px] flex-col overflow-hidden rounded-[10px] p-5 md:min-h-[390px] ${item.color}`} key={item.tag}><CardArt kind={item.art} /><p className="mb-2 font-mono text-[10px]">{item.tag}</p><h3 className="max-w-[250px] text-[27px] font-bold leading-[1.02] tracking-[-.05em]">{item.title}</h3><div className="mt-auto flex items-start gap-4 border-t border-[#20304c55] pt-3.5 text-xs leading-snug"><span className="max-w-[260px]">{item.description}</span><b className="ml-auto text-xl">-&gt;</b></div></article>)}</div></div></section>
+
+    <section id="pricing" className="mx-auto grid max-w-[1240px] items-center gap-14 px-7 py-[75px] md:grid-cols-[1fr_390px] md:gap-[90px] md:py-[120px]"><div><p className="mb-5 font-mono text-[11px] font-medium tracking-wide text-[#6b7482]">03 / PAY AS YOU GO</p><h2 className="mb-5 text-[clamp(40px,4.3vw,61px)] font-bold leading-[.94] tracking-[-.065em]">Use the power.<br /><em className="font-[ui-serif,Georgia,serif] font-semibold text-[#5979ff]">Skip the pressure.</em></h2><p className="mb-7 max-w-[450px] text-base leading-relaxed text-[#626a76]">There are no plans to decipher and no equipment to buy. Your bill only runs while your computer does.</p><a className="inline-flex items-center rounded-md bg-[#17202f] px-5 py-[15px] text-sm font-semibold !text-white shadow-[4px_4px_0_#fc7866] transition-colors hover:bg-[#30415f]" href="#start">See pricing <span className="ml-2 text-[#c7e65d]">-&gt;</span></a></div><div className="rotate-[2deg] border border-[#d8d1c5] bg-[#fffdf6] p-[22px_23px] text-[13px] shadow-[9px_9px_0_#c7e65d]"><div className="flex justify-between border-b-2 border-dashed border-[#cfcac0] pb-5 text-lg font-bold"><span>nvos</span><b className="font-mono text-[10px] font-normal">ESTIMATE</b></div>{[["Everyday computer", "$0.09 / hr"], ["8 GB RAM", "included"], ["Linux Mint", "included"]].map(([label, value]) => <div className="flex justify-between border-b border-[#e2ded5] py-3 text-[#606872]" key={label}><span>{label}</span><b className="font-mono text-[11px] text-[#17202f]">{value}</b></div>)}<div className="flex justify-between py-5"><span>Your total</span><b className="text-[27px] tracking-tight">$0.09<small className="text-xs font-normal tracking-normal"> / hr</small></b></div><p className="border-t-2 border-dashed border-[#cfcac0] pt-4 text-center font-mono text-[10px] text-[#6c7480]">Pause or shut down whenever you like.</p></div></section>
+
+    <footer className="flex min-h-[143px] flex-col justify-center gap-4 bg-[#17243d] px-7 py-8 text-white md:flex-row md:items-center md:justify-between md:px-[max(28px,calc((100%-1184px)/2))]"><a className="flex items-center gap-2 text-[25px] font-bold tracking-[-1.5px]" href="#top"><Mark light />nvos</a><p className="text-sm text-[#c2cad8]">Cloud computing that feels human.</p><span className="font-mono text-xs tracking-widest text-[#c7e65d]">READY WHEN YOU ARE</span></footer>
+  </main>;
 }
