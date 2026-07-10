@@ -260,15 +260,16 @@ export default function Home() {
           <div className="border-t border-[#0d2236]/25">
             {workModes.map(([number, title, body, tag]) => (
               <article
-                className="grid gap-4 border-b border-[#0d2236]/25 py-7 transition hover:bg-[#0d2236]/5 md:grid-cols-[64px_minmax(170px,1fr)_minmax(260px,2fr)_auto] md:items-baseline md:gap-6"
+                className="flex flex-col gap-4 border-b border-[#0d2236]/25 py-7 transition hover:bg-[#0d2236]/5 md:grid-cols-[64px_minmax(170px,1fr)_minmax(260px,2fr)_auto] md:items-baseline md:gap-6"
                 key={number}
               >
-                <span className="font-mono text-sm text-[#3973ff]">
-                  {number}
-                </span>
-                <h3 className="font-[Impact,Haettenschweiler,Arial_Narrow_Bold,sans-serif] text-3xl tracking-wide">
-                  {title.toUpperCase()}
-                </h3>
+                <div className="flex gap-5">
+                  <span className="font-[Impact,Haettenschweiler,Arial_Narrow_Bold,sans-serif] text-2xl text-[#3973ff]">{number}</span>
+                  <h3 className="font-[Impact,Haettenschweiler,Arial_Narrow_Bold,sans-serif] text-3xl tracking-wide">
+                    {title.toUpperCase()}
+                  </h3>
+                </div>
+
                 <p className="max-w-xl text-base leading-relaxed text-[#0d2236]/75">
                   {body}
                 </p>
