@@ -194,7 +194,7 @@ export default function Home() {
           </div>
           <Link
             className="inline-flex items-center gap-2 rounded-full bg-[#f4f0e4] px-4 py-2.5 text-[11px] font-semibold tracking-wide !text-[#0d2236] transition hover:-translate-y-0.5 hover:bg-[#b9e7d2]"
-            href="/coming-soon"
+            href="/sign-in"
           >
             <i className="size-1.5 rounded-full bg-[#3973ff]" />
             LAUNCH
@@ -216,7 +216,7 @@ export default function Home() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               className="inline-flex items-center gap-3 rounded-full bg-[#3973ff] px-6 py-3.5 font-mono text-[13px] font-semibold tracking-wide !text-white transition hover:-translate-y-0.5 hover:bg-[#5889ff]"
-              href="/coming-soon"
+              href="/sign-in"
             >
               BUILD YOUR MACHINE <span className="text-[#f6c95d]">-&gt;</span>
             </Link>
@@ -389,7 +389,7 @@ export default function Home() {
           </p>
           <Link
             className="mt-9 inline-flex items-center gap-3 rounded-full bg-[#0d2236] px-7 py-4 font-mono text-[13px] font-semibold tracking-wide !text-[#f4f0e4] shadow-[5px_5px_0_#3973ff] transition hover:-translate-y-0.5 hover:bg-[#17344f]"
-            href="/coming-soon"
+            href="/sign-in"
           >
             SEE WHAT&apos;S COMING <span className="text-[#b9e7d2]">-&gt;</span>
           </Link>
