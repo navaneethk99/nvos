@@ -48,7 +48,7 @@ function MobileSystem() {
 }
 
 export default function Home() {
-  return <main className="snap-y snap-mandatory overflow-x-clip bg-[#f4f0e4] font-[ui-serif,Georgia,serif] text-[#0d2236] selection:bg-[#b9e7d2] [&>section:nth-of-type(4)]:sticky [&>section:nth-of-type(4)]:top-0 [&>section:nth-of-type(4)]:z-40 [&>section:nth-of-type(5)]:sticky [&>section:nth-of-type(5)]:top-0 [&>section:nth-of-type(5)]:z-50 [&>footer]:relative [&>footer]:z-[60]">
+  return <main className="snap-y snap-mandatory overflow-x-clip bg-[#f4f0e4] font-[ui-serif,Georgia,serif] text-[#0d2236] selection:bg-[#b9e7d2] [&>#how-it-works_h2]:text-[clamp(42px,8vw,110px)] [&>#how-it-works_article>span:first-child]:font-[Impact,Haettenschweiler,Arial_Narrow_Bold,sans-serif] [&>#how-it-works_article>span:first-child]:text-2xl [&>section:nth-of-type(4)_h2]:text-[clamp(40px,7vw,98px)] [&>section:nth-of-type(4)]:sticky [&>section:nth-of-type(4)]:top-0 [&>section:nth-of-type(4)]:z-40 [&>section:nth-of-type(5)]:sticky [&>section:nth-of-type(5)]:top-0 [&>section:nth-of-type(5)]:z-50 [&>footer]:relative [&>footer]:z-[60]">
     <section id="top" className="sticky top-0 z-10 min-h-screen snap-start overflow-hidden bg-[#0d2236] px-5 text-[#f4f0e4] sm:px-8 md:px-[7vw]">
       <nav className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between px-5 py-5 font-mono text-xs sm:px-8 md:px-[7vw]" aria-label="Main navigation">
         <Link className="flex items-center gap-2 text-2xl font-bold tracking-[-1.5px]" href="#top"><Mark light />nvos</Link>
