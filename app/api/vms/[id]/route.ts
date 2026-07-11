@@ -5,7 +5,6 @@ import { db } from "@/db";
 import { virtualMachine } from "@/db/schema";
 import { getVmStatus, terminateVm } from "@/lib/vm-control-client";
 import { controlFailureResponse, findOwnedVm, publicVm, requireVmUser } from "@/lib/vm-route";
-import { isTransitionalVmStatus } from "@/lib/vm-status";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const user = await requireVmUser();
@@ -14,7 +13,8 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const result = await findOwnedVm(id, user.id);
   if (result.response) return result.response;
   let vm = result.vm!;
-  if (isTransitionalVmStatus(vm.status)) {
+  // Reconcile records that may have completed after a dashboard-to-control-service timeout.
+  if (vm.status !== "terminated") {
     try {
       const controlled = await getVmStatus(id);
       const [updated] = await db.update(virtualMachine).set({ status: controlled.status, instanceId: controlled.instanceId ?? vm.instanceId, privateIp: controlled.privateIp ?? vm.privateIp, stoppedAt: controlled.status === "stopped" ? new Date() : vm.stoppedAt, terminatedAt: controlled.status === "terminated" ? new Date() : vm.terminatedAt, updatedAt: new Date() }).where(eq(virtualMachine.id, id)).returning();

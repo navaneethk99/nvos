@@ -29,7 +29,7 @@ export function VmManager({ initialVm }: { initialVm: PublicVm | null }) {
       if (!response.ok) throw new Error();
       const data = await response.json() as { vms: PublicVm[] };
       const selected = data.vms.find((item) => item.status !== "terminated" && item.status !== "failed") ?? data.vms[0] ?? null;
-      if (selected && isTransitionalVmStatus(selected.status)) {
+      if (selected && selected.status !== "terminated") {
         const detailResponse = await fetch(`/api/vms/${selected.id}`, { cache: "no-store" });
         if (detailResponse.ok) {
           const detail = await detailResponse.json() as { vm: PublicVm };
@@ -41,7 +41,7 @@ export function VmManager({ initialVm }: { initialVm: PublicVm | null }) {
   }
 
   useEffect(() => {
-    if (!vm || !isTransitionalVmStatus(vm.status)) return;
+    if (!vm || (!isTransitionalVmStatus(vm.status) && vm.status !== "failed")) return;
     let timer: number | undefined;
     const poll = () => {
       if (document.visibilityState !== "visible") return;
@@ -50,6 +50,14 @@ export function VmManager({ initialVm }: { initialVm: PublicVm | null }) {
     const visibility = () => { if (document.visibilityState === "visible") void refresh(); };
     window.addEventListener("focus", visibility);
     document.addEventListener("visibilitychange", visibility);
+    if (vm.status === "failed") {
+      const recheck = window.setTimeout(() => void refresh(), 0);
+      return () => {
+        window.clearTimeout(recheck);
+        window.removeEventListener("focus", visibility);
+        document.removeEventListener("visibilitychange", visibility);
+      };
+    }
     poll();
     return () => { if (timer) window.clearTimeout(timer); window.removeEventListener("focus", visibility); document.removeEventListener("visibilitychange", visibility); };
   // The interval is intentionally reset only when the selected VM or its state changes.
