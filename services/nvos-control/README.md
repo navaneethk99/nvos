@@ -25,4 +25,6 @@ The launch template must define the AMI, instance type, security groups, subnet/
 4. Run `sudo systemctl daemon-reload && sudo systemctl enable --now nvos-control`.
 5. Keep `CADDY_ADMIN_URL` loopback-only and configure DNS `*.vm.nvos.in` to the proxy public address.
 
+The dashboard cannot reach a service bound to `127.0.0.1` directly. Publish a separate HTTPS control hostname through Caddy (for example, `control.nvos.in`) that reverse-proxies only to `127.0.0.1:3001`, then set Vercel's `NVOS_CONTROL_URL` to that HTTPS URL. Do not expose port `3001` directly; the service's bearer authorization remains required on every request.
+
 The service expects Caddy's HTTP server to be named `srv0` and appends reverse-proxy routes under that server. Caddy's reverse proxy supports WebSockets by default. Do not expose port 2019 publicly.

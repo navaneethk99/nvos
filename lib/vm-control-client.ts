@@ -9,6 +9,7 @@ export class ControlServiceError extends Error {
   constructor(
     message: string,
     readonly kind: "timeout" | "authentication" | "conflict" | "validation" | "internal",
+    readonly statusCode?: number,
   ) {
     super(message);
     this.name = "ControlServiceError";
@@ -59,7 +60,7 @@ async function request(path: string, method: "GET" | "POST", body?: unknown) {
     });
     if (!response.ok) {
       const kind = response.status === 401 || response.status === 403 ? "authentication" : response.status === 409 ? "conflict" : response.status === 400 || response.status === 422 ? "validation" : "internal";
-      throw new ControlServiceError("The VM control service could not complete the request.", kind);
+      throw new ControlServiceError("The VM control service could not complete the request.", kind, response.status);
     }
     let data: unknown;
     try { data = await response.json(); } catch { throw new ControlServiceError("The VM control service returned invalid JSON.", "internal"); }

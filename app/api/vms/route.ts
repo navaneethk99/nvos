@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { type VmStatus, virtualMachine } from "@/db/schema";
-import { createVm } from "@/lib/vm-control-client";
+import { ControlServiceError, createVm } from "@/lib/vm-control-client";
 import { getVmConfig } from "@/lib/vm-config";
 import { publicVm, requireVmUser, controlFailureResponse } from "@/lib/vm-route";
 import { generateUniqueVmSlug } from "@/lib/vm-slug";
@@ -46,7 +46,12 @@ export async function POST() {
       return NextResponse.json({ vm: publicVm(updated) }, { status: controlled.status === "provisioning" || controlled.status === "starting" ? 202 : 201 });
     } catch (error) {
       await db.update(virtualMachine).set({ status: "failed", failureReason: "Unable to provision the VM. Please try again.", updatedAt: new Date() }).where(eq(virtualMachine.id, vm.id));
-      console.error("VM provisioning failed", { vmId: vm.id, userId: user.id, errorKind: error instanceof Error ? error.name : "UnknownError" });
+      console.error("VM provisioning failed", {
+        vmId: vm.id,
+        userId: user.id,
+        errorKind: error instanceof ControlServiceError ? error.kind : error instanceof Error ? error.name : "UnknownError",
+        controlStatusCode: error instanceof ControlServiceError ? error.statusCode : undefined,
+      });
       return controlFailureResponse(error);
     }
   } catch (error) {
