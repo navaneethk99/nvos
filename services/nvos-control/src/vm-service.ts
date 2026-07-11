@@ -7,6 +7,7 @@ import {
   TerminateInstancesCommand,
   type Instance,
 } from "@aws-sdk/client-ec2";
+import { connect, type Socket } from "node:net";
 
 import type { ControlConfig } from "./config";
 import { CaddyClient } from "./caddy-client";
@@ -41,6 +42,7 @@ export class VmService {
     private readonly config: ControlConfig,
     private readonly logger: Logger,
     private readonly fetchImpl: typeof fetch = fetch,
+    private readonly connectImpl: (options: { host: string; port: number }) => Socket = connect,
   ) {}
 
   private hostname(slug: string) { return `${slug}.${this.config.vmBaseDomain}`; }
@@ -90,6 +92,34 @@ export class VmService {
     throw new VmServiceError("Desktop did not become healthy before the timeout.", 504);
   }
 
+  private async waitForRdp(privateIp: string) {
+    const deadline = Date.now() + desktopTimeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const socket = this.connectImpl({ host: privateIp, port: 3389 });
+          const timer = setTimeout(() => {
+            socket.destroy();
+            reject(new Error("RDP connection timed out."));
+          }, 5_000);
+          socket.once("connect", () => {
+            clearTimeout(timer);
+            socket.end();
+            resolve();
+          });
+          socket.once("error", (error) => {
+            clearTimeout(timer);
+            socket.destroy();
+            reject(error);
+          });
+        });
+        return;
+      } catch { /* RDP is still starting */ }
+      await sleep(pollMs);
+    }
+    throw new VmServiceError("RDP did not become healthy before the timeout.", 504);
+  }
+
   async create(vmId: string, slug: string, userId: string, plan: VmPlan, os: VmOperatingSystem) {
     const instanceType = INSTANCE_TYPES[plan];
     const launchTemplateId = this.launchTemplateId(os);
@@ -110,11 +140,16 @@ export class VmService {
       const instance = await this.waitForState(instanceId, "running");
       this.logger.info({ vmId, userId, plan, instanceType, instanceId, publicIp: instance.PublicIpAddress }, "Instance running");
       if (!instance.PrivateIpAddress) throw new VmServiceError("EC2 instance has no private IP.");
-      await this.waitForDesktop(instance.PrivateIpAddress);
-      this.logger.info({ vmId, instanceId }, "Desktop ready");
-      const host = this.hostname(slug);
-      this.logger.info({ vmId, host }, "Creating Caddy route");
-      await this.caddy.addRoute(host, instance.PrivateIpAddress);
+      if (os === "ubuntu") {
+        await this.waitForDesktop(instance.PrivateIpAddress);
+        this.logger.info({ vmId, instanceId }, "Desktop ready");
+        const host = this.hostname(slug);
+        this.logger.info({ vmId, host }, "Creating Caddy route");
+        await this.caddy.addRoute(host, instance.PrivateIpAddress);
+      } else {
+        await this.waitForRdp(instance.PrivateIpAddress);
+        this.logger.info({ vmId, instanceId }, "RDP ready; awaiting Guacamole automation");
+      }
       return this.result(vmId, slug, instance, "running");
     } catch (error) {
       this.logger.error({ vmId, userId, os, plan, instanceType, launchTemplateId, instanceId, error: error instanceof Error ? error.message : "Unknown error" }, "Provisioning failed");
@@ -130,6 +165,7 @@ export class VmService {
   async start(vmId: string) {
     const instance = await this.findInstance(vmId);
     const slug = instance.Tags?.find((tag) => tag.Key === "nvos:slug")?.Value;
+    const os = instance.Tags?.find((tag) => tag.Key === "nvos:os")?.Value === "windows" ? "windows" : "ubuntu";
     if (!instance.InstanceId || !slug) throw new VmServiceError("VM metadata is incomplete.");
     if (instance.State?.Name !== "running") {
       this.logger.info({ vmId, instanceId: instance.InstanceId }, "Starting instance");
@@ -137,9 +173,14 @@ export class VmService {
     }
     const running = await this.waitForState(instance.InstanceId, "running");
     if (!running.PrivateIpAddress) throw new VmServiceError("EC2 instance has no private IP.");
-    await this.waitForDesktop(running.PrivateIpAddress);
-    this.logger.info({ vmId, host: this.hostname(slug) }, "Creating Caddy route");
-    await this.caddy.addRoute(this.hostname(slug), running.PrivateIpAddress);
+    if (os === "ubuntu") {
+      await this.waitForDesktop(running.PrivateIpAddress);
+      this.logger.info({ vmId, host: this.hostname(slug) }, "Creating Caddy route");
+      await this.caddy.addRoute(this.hostname(slug), running.PrivateIpAddress);
+    } else {
+      await this.waitForRdp(running.PrivateIpAddress);
+      this.logger.info({ vmId, instanceId: running.InstanceId }, "RDP ready; awaiting Guacamole automation");
+    }
     return this.result(vmId, slug, running, "running");
   }
 
