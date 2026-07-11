@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The proxy service has independent TypeScript checks and is not a Next app.
+    "services/nvos-control/**",
   ]),
 ]);
 

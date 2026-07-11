@@ -1,0 +1,56 @@
+import { and, desc, eq, lt, notInArray } from "drizzle-orm";
+import { NextResponse } from "next/server";
+
+import { db } from "@/db";
+import { type VmStatus, virtualMachine } from "@/db/schema";
+import { createVm } from "@/lib/vm-control-client";
+import { getVmConfig } from "@/lib/vm-config";
+import { publicVm, requireVmUser, controlFailureResponse } from "@/lib/vm-route";
+import { generateUniqueVmSlug } from "@/lib/vm-slug";
+
+const terminalStatuses: VmStatus[] = ["terminated", "failed"];
+
+export async function GET() {
+  const user = await requireVmUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // A control service outage must not leave old provisioning records blocking users forever.
+  await db.update(virtualMachine).set({ status: "failed", failureReason: "Provisioning did not complete. Please try again.", updatedAt: new Date() })
+    .where(and(eq(virtualMachine.userId, user.id), eq(virtualMachine.status, "provisioning"), lt(virtualMachine.createdAt, new Date(Date.now() - 10 * 60 * 1_000))));
+  const vms = await db.select().from(virtualMachine).where(eq(virtualMachine.userId, user.id)).orderBy(desc(virtualMachine.createdAt));
+  return NextResponse.json({ vms: vms.map(publicVm) }, { headers: { "Cache-Control": "no-store" } });
+}
+
+export async function POST() {
+  const user = await requireVmUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const active = await db.select({ id: virtualMachine.id }).from(virtualMachine)
+    .where(and(eq(virtualMachine.userId, user.id), notInArray(virtualMachine.status, terminalStatuses))).limit(1);
+  if (active[0]) return NextResponse.json({ error: "You already have an active VM." }, { status: 409 });
+
+  try {
+    const slug = await generateUniqueVmSlug(async (candidate) => !(await db.select({ id: virtualMachine.id }).from(virtualMachine).where(eq(virtualMachine.slug, candidate)).limit(1))[0]);
+    const hostname = `${slug}.${getVmConfig().baseDomain}`;
+    let vm: typeof virtualMachine.$inferSelect;
+    try {
+      [vm] = await db.insert(virtualMachine).values({ userId: user.id, slug, hostname, status: "provisioning" }).returning();
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "23505") return NextResponse.json({ error: "You already have an active VM." }, { status: 409 });
+      throw error;
+    }
+
+    try {
+      const controlled = await createVm({ vmId: vm.id, slug, userId: user.id });
+      const [updated] = await db.update(virtualMachine).set({ instanceId: controlled.instanceId, privateIp: controlled.privateIp, hostname: controlled.hostname, status: controlled.status, updatedAt: new Date() }).where(eq(virtualMachine.id, vm.id)).returning();
+      return NextResponse.json({ vm: publicVm(updated) }, { status: controlled.status === "provisioning" || controlled.status === "starting" ? 202 : 201 });
+    } catch (error) {
+      await db.update(virtualMachine).set({ status: "failed", failureReason: "Unable to provision the VM. Please try again.", updatedAt: new Date() }).where(eq(virtualMachine.id, vm.id));
+      console.error("VM provisioning failed", { vmId: vm.id, userId: user.id, errorKind: error instanceof Error ? error.name : "UnknownError" });
+      return controlFailureResponse(error);
+    }
+  } catch (error) {
+    console.error("VM creation failed", { userId: user.id, errorKind: error instanceof Error ? error.name : "UnknownError" });
+    return NextResponse.json({ error: "Unable to create a VM." }, { status: 500 });
+  }
+}

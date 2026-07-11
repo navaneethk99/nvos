@@ -1,0 +1,18 @@
+[Unit]
+Description=nvos EC2 and Caddy control service
+After=network-online.target caddy.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nvos
+WorkingDirectory=/opt/nvos/services/nvos-control
+EnvironmentFile=/etc/nvos-control.env
+ExecStart=/usr/bin/node /opt/nvos/services/nvos-control/dist/server.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

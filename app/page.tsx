@@ -194,7 +194,7 @@ export default function Home() {
           </div>
           <Link
             className="inline-flex items-center gap-2 rounded-full bg-[#f4f0e4] px-4 py-2.5 text-[11px] font-semibold tracking-wide !text-[#0d2236] transition hover:-translate-y-0.5 hover:bg-[#b9e7d2]"
-            href="/sign-in"
+            href="/dashboard"
           >
             <i className="size-1.5 rounded-full bg-[#3973ff]" />
             LAUNCH
@@ -216,7 +216,7 @@ export default function Home() {
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               className="inline-flex items-center gap-3 rounded-full bg-[#3973ff] px-6 py-3.5 font-mono text-[13px] font-semibold tracking-wide !text-white transition hover:-translate-y-0.5 hover:bg-[#5889ff]"
-              href="/sign-in"
+              href="/dashboard"
             >
               BUILD YOUR MACHINE <span className="text-[#f6c95d]">-&gt;</span>
             </Link>
@@ -239,7 +239,7 @@ export default function Home() {
 
       <section
         id="how-it-works"
-        className="sticky top-0 z-20 flex min-h-screen snap-start items-center bg-[#b9e7d2] px-5 py-20 sm:px-8 md:px-[7vw] md:py-32"
+        className="sticky top-0 z-20 flex min-h-screen snap-start items-center bg-[#b9e7d2] px-5 py-0 sm:px-8 md:px-[7vw] md:py-20"
       >
         <div className="w-full">
           <div className="mb-16 flex max-w-5xl gap-5 md:gap-10">
@@ -260,11 +260,13 @@ export default function Home() {
           <div className="border-t border-[#0d2236]/25">
             {workModes.map(([number, title, body, tag]) => (
               <article
-                className="flex flex-col gap-4 border-b border-[#0d2236]/25 py-7 transition hover:bg-[#0d2236]/5 md:grid-cols-[64px_minmax(170px,1fr)_minmax(260px,2fr)_auto] md:items-baseline md:gap-6"
+                className="flex flex-col border-b border-[#0d2236]/25 transition hover:bg-[#0d2236]/5 md:grid-cols-[64px_minmax(170px,1fr)_minmax(260px,2fr)_auto] md:items-baseline "
                 key={number}
               >
                 <div className="flex gap-5">
-                  <span className="font-[Impact,Haettenschweiler,Arial_Narrow_Bold,sans-serif] text-2xl text-[#3973ff]">{number}</span>
+                  <span className="font-[Impact,Haettenschweiler,Arial_Narrow_Bold,sans-serif] text-2xl text-[#3973ff]">
+                    {number}
+                  </span>
                   <h3 className="font-[Impact,Haettenschweiler,Arial_Narrow_Bold,sans-serif] text-3xl tracking-wide">
                     {title.toUpperCase()}
                   </h3>
@@ -389,7 +391,7 @@ export default function Home() {
           </p>
           <Link
             className="mt-9 inline-flex items-center gap-3 rounded-full bg-[#0d2236] px-7 py-4 font-mono text-[13px] font-semibold tracking-wide !text-[#f4f0e4] shadow-[5px_5px_0_#3973ff] transition hover:-translate-y-0.5 hover:bg-[#17344f]"
-            href="/sign-in"
+            href="/dashboard"
           >
             SEE WHAT&apos;S COMING <span className="text-[#b9e7d2]">-&gt;</span>
           </Link>

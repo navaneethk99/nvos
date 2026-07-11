@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/services/nvos-control/node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -19,6 +20,7 @@
 
 # production
 /build
+/services/nvos-control/dist/
 
 # misc
 .DS_Store
@@ -30,8 +32,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
+.env
+.env.local
 .env*
+!.env.example
 
 # vercel
 .vercel

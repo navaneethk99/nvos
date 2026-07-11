@@ -1,9 +1,25 @@
 import {
   boolean,
+  index,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
+
+export const vmStatuses = [
+  "provisioning",
+  "starting",
+  "running",
+  "stopping",
+  "stopped",
+  "terminating",
+  "terminated",
+  "failed",
+] as const;
+
+export type VmStatus = (typeof vmStatuses)[number];
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -66,3 +82,31 @@ export const instance = pgTable("instance", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
 });
+
+export const virtualMachine = pgTable(
+  "virtual_machine",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    slug: text("slug").notNull(),
+    hostname: text("hostname").notNull(),
+    instanceId: text("instance_id"),
+    privateIp: text("private_ip"),
+    status: text("status").$type<VmStatus>().notNull().default("provisioning"),
+    failureReason: text("failure_reason"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    stoppedAt: timestamp("stopped_at"),
+    terminatedAt: timestamp("terminated_at"),
+  },
+  (table) => [
+    uniqueIndex("virtual_machine_slug_unique").on(table.slug),
+    uniqueIndex("virtual_machine_hostname_unique").on(table.hostname),
+    uniqueIndex("virtual_machine_instance_id_unique").on(table.instanceId),
+    index("virtual_machine_user_id_idx").on(table.userId),
+    index("virtual_machine_status_idx").on(table.status),
+    index("virtual_machine_user_status_idx").on(table.userId, table.status),
+  ],
+);

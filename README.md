@@ -43,6 +43,20 @@ npm run db:generate
 npm run db:migrate
 ```
 
+## VM Management
+
+The dashboard creates one browser-accessible Ubuntu VM per user through an internal proxy control service; it never calls AWS from browser code. Apply the `0002_vm_management` Drizzle migration, then configure:
+
+```bash
+NVOS_CONTROL_URL=https://proxy-control.internal
+NVOS_CONTROL_SECRET=replace-with-a-server-only-secret
+NVOS_VM_BASE_DOMAIN=vm.nvos.in
+```
+
+The control service must expose `POST /internal/vms`, `POST /internal/vms/:id/start`, `POST /internal/vms/:id/stop`, and `POST /internal/vms/:id/terminate`, authenticated with `Authorization: Bearer <NVOS_CONTROL_SECRET>`. It should return the VM ID, slug, hostname, instance ID, private IP, and status described by the API implementation.
+
+Configure wildcard DNS: `*.vm.nvos.in -> 13.200.44.11`. For local testing, point `NVOS_CONTROL_URL` at a mocked HTTP service and run `npm test`; tests do not contact AWS or the proxy. The MVP permits one non-terminated/non-failed VM per user. Random subdomains are not authorization: protect desktop access at the proxy with authenticated signed cookies, short-lived access tokens, or equivalent proxy-level authorization.
+
 ## Available Commands
 
 ```bash
