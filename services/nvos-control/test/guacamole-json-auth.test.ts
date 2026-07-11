@@ -17,11 +17,14 @@ describe("Guacamole JSON authentication", () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ authToken: "short-token", dataSource: "json" })))
       .mockResolvedValueOnce(new Response(JSON.stringify({ "nvos-vm-1": { name: "nvos-vm-1" } })));
-    const client = new GuacamoleJsonAuthClient("https://guacamole.test", "0123456789abcdef0123456789abcdef", "windows-secret", fetchMock, () => 1_000);
+    const client = new GuacamoleJsonAuthClient("http://172.31.37.192:8080/guacamole", "https://desktop.nvos.in/guacamole", "0123456789abcdef0123456789abcdef", "windows-secret", fetchMock, () => 1_000);
 
     const launch = await client.createWindowsLaunch("vm-1", "user-1", "172.31.1.4");
 
-    expect(launch).toEqual({ launchUrl: "https://guacamole.test/#/client/json/c/nvos-vm-1?token=short-token" });
+    expect(fetchMock.mock.calls[0][0]).toBe("http://172.31.37.192:8080/guacamole/api/tokens");
+    expect(fetchMock.mock.calls[1][0]).toContain("http://172.31.37.192:8080/guacamole/api/session/data/json/connections");
+    expect(launch).toEqual({ launchUrl: "https://desktop.nvos.in/guacamole/#/client/json/c/nvos-vm-1?token=short-token" });
+    expect(JSON.stringify(launch)).not.toContain("172.31.37.192");
     expect(JSON.stringify(launch)).not.toContain("windows-secret");
     expect(JSON.stringify(launch)).not.toContain("0123456789abcdef0123456789abcdef");
     expect(fetchMock.mock.calls[0][1].body).toMatch(/^data=/);

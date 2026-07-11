@@ -3,6 +3,7 @@ export type ControlConfig = {
   launchTemplateId: string;
   windowsLaunchTemplateId: string;
   guacamoleUrl: string;
+  guacamolePublicUrl: string;
   guacamoleUsername: string;
   guacamolePassword: string;
   guacamoleRdpPassword: string;
@@ -32,6 +33,7 @@ export function loadConfig(env = process.env): ControlConfig {
     launchTemplateId: env.NVOS_EC2_LAUNCH_TEMPLATE_ID?.trim() || "",
     windowsLaunchTemplateId: env.AWS_WINDOWS_LAUNCH_TEMPLATE_ID?.trim() || "",
     guacamoleUrl: (env.GUACAMOLE_URL?.trim() || "").replace(/\/$/, ""),
+    guacamolePublicUrl: required("GUACAMOLE_PUBLIC_URL", env).replace(/\/$/, ""),
     guacamoleUsername: env.GUACAMOLE_USERNAME?.trim() || "",
     guacamolePassword: env.GUACAMOLE_PASSWORD ?? "",
     guacamoleRdpPassword: env.GUACAMOLE_RDP_PASSWORD ?? "",

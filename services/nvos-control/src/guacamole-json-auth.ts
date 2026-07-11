@@ -41,7 +41,8 @@ export function createWindowsJsonAuthPayload(vmId: string, userId: string, priva
 
 export class GuacamoleJsonAuthClient {
   constructor(
-    private readonly url: string,
+    private readonly internalUrl: string,
+    private readonly publicUrl: string,
     private readonly secret: string,
     private readonly rdpPassword: string,
     private readonly fetchImpl: typeof fetch = fetch,
@@ -49,7 +50,7 @@ export class GuacamoleJsonAuthClient {
   ) {}
 
   private assertConfigured() {
-    if (!this.url || !this.rdpPassword || !/^[a-fA-F0-9]{32}$/.test(this.secret)) {
+    if (!this.internalUrl || !this.publicUrl || !this.rdpPassword || !/^[a-fA-F0-9]{32}$/.test(this.secret)) {
       throw new GuacamoleJsonAuthError("Guacamole JSON authentication is not configured.");
     }
   }
@@ -61,7 +62,7 @@ export class GuacamoleJsonAuthClient {
     const connectionName = this.connectionName(vmId);
     const payload = createWindowsJsonAuthPayload(vmId, userId, privateIp, this.rdpPassword, this.now());
     const data = encryptGuacamoleJsonAuthPayload(this.secret, payload);
-    const tokenResponse = await this.fetchImpl(`${this.url}/api/tokens`, {
+    const tokenResponse = await this.fetchImpl(`${this.internalUrl}/api/tokens`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ data }).toString(),
@@ -70,12 +71,12 @@ export class GuacamoleJsonAuthClient {
     const session: unknown = await tokenResponse.json();
     if (!session || typeof session !== "object" || typeof (session as JsonAuthSession).authToken !== "string" || typeof (session as JsonAuthSession).dataSource !== "string") throw new GuacamoleJsonAuthError("Guacamole JSON authentication returned invalid data.");
     const { authToken, dataSource } = session as JsonAuthSession;
-    const connectionsResponse = await this.fetchImpl(`${this.url}/api/session/data/${encodeURIComponent(dataSource)}/connections?token=${encodeURIComponent(authToken)}`);
+    const connectionsResponse = await this.fetchImpl(`${this.internalUrl}/api/session/data/${encodeURIComponent(dataSource)}/connections?token=${encodeURIComponent(authToken)}`);
     if (!connectionsResponse.ok) throw new GuacamoleJsonAuthError("Guacamole connection lookup failed.");
     const connections: unknown = await connectionsResponse.json();
     if (!connections || typeof connections !== "object" || Array.isArray(connections)) throw new GuacamoleJsonAuthError("Guacamole connection lookup returned invalid data.");
     const identifier = Object.entries(connections as Record<string, JsonAuthConnection>).find(([, connection]) => connection.name === connectionName)?.[0];
     if (!identifier) throw new GuacamoleJsonAuthError("Guacamole JSON connection was not created.");
-    return { launchUrl: `${this.url}/#/client/${encodeURIComponent(dataSource)}/c/${encodeURIComponent(identifier)}?token=${encodeURIComponent(authToken)}` };
+    return { launchUrl: `${this.publicUrl}/#/client/${encodeURIComponent(dataSource)}/c/${encodeURIComponent(identifier)}?token=${encodeURIComponent(authToken)}` };
   }
 }

@@ -31,7 +31,7 @@ export function buildApp(config: ControlConfig, dependencies: Dependencies = {})
     config,
     app.log,
     new GuacamoleClient(config.guacamoleUrl, config.guacamoleUsername, config.guacamolePassword, config.guacamoleRdpPassword),
-    new GuacamoleJsonAuthClient(config.guacamoleUrl, config.guacamoleJsonSecret, config.guacamoleRdpPassword),
+    new GuacamoleJsonAuthClient(config.guacamoleUrl, config.guacamolePublicUrl, config.guacamoleJsonSecret, config.guacamoleRdpPassword),
   );
 
   app.addHook("onRequest", async (request, reply) => {

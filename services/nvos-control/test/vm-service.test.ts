@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ControlConfig } from "../src/config";
 import { VmService } from "../src/vm-service";
 
-const config: ControlConfig = { awsRegion: "ap-south-1", launchTemplateId: "lt-ubuntu", windowsLaunchTemplateId: "lt-windows", guacamoleUrl: "http://guacamole.test", guacamoleUsername: "guacadmin", guacamolePassword: "secret", guacamoleRdpPassword: "windows-secret", guacamoleJsonSecret: "0123456789abcdef0123456789abcdef", controlSecret: "secret", vmBaseDomain: "vm.nvos.in", caddyAdminUrl: "http://127.0.0.1:2019", host: "127.0.0.1", port: 3001 };
+const config: ControlConfig = { awsRegion: "ap-south-1", launchTemplateId: "lt-ubuntu", windowsLaunchTemplateId: "lt-windows", guacamoleUrl: "http://guacamole.test", guacamolePublicUrl: "https://desktop.test", guacamoleUsername: "guacadmin", guacamolePassword: "secret", guacamoleRdpPassword: "windows-secret", guacamoleJsonSecret: "0123456789abcdef0123456789abcdef", controlSecret: "secret", vmBaseDomain: "vm.nvos.in", caddyAdminUrl: "http://127.0.0.1:2019", host: "127.0.0.1", port: 3001 };
 
 type ReadinessOptions = {
   fetchImpl?: typeof fetch;
