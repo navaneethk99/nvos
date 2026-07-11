@@ -12,7 +12,7 @@ describe("getEc2LaunchConfiguration", () => {
     );
   });
 
-  it("uses t3.micro when the instance type is omitted", () => {
+  it("returns infrastructure settings without choosing an instance type", () => {
     expect(
       getEc2LaunchConfiguration({
         AWS_EC2_AMI_ID: "ami-test",
@@ -22,7 +22,6 @@ describe("getEc2LaunchConfiguration", () => {
       }),
     ).toEqual({
       amiId: "ami-test",
-      instanceType: "t3.micro",
       keyName: "test-key",
       securityGroupId: "sg-test",
       subnetId: "subnet-test",

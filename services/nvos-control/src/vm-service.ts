@@ -15,6 +15,15 @@ const stateTimeoutMs = 10 * 60 * 1_000;
 const desktopTimeoutMs = 5 * 60 * 1_000;
 const pollMs = 3_000;
 
+const INSTANCE_TYPES = {
+  micro: "t3.micro",
+  small: "t3.small",
+  medium: "t3.medium",
+  large: "t3.large",
+} as const;
+
+type VmPlan = keyof typeof INSTANCE_TYPES;
+
 export class VmServiceError extends Error {
   constructor(message: string, readonly statusCode = 502) { super(message); this.name = "VmServiceError"; }
 }
@@ -72,12 +81,14 @@ export class VmService {
     throw new VmServiceError("Desktop did not become healthy before the timeout.", 504);
   }
 
-  async create(vmId: string, slug: string, userId: string) {
-    this.logger.info({ vmId, slug, userId }, "Launching instance");
+  async create(vmId: string, slug: string, userId: string, plan: VmPlan) {
+    const instanceType = INSTANCE_TYPES[plan];
+    this.logger.info({ vmId, slug, userId, plan, instanceType }, "Launching instance");
     let instanceId: string | undefined;
     try {
       const launched = await this.ec2.send(new RunInstancesCommand({
-        LaunchTemplate: { LaunchTemplateId: this.config.launchTemplateId, Version: "$Default" },
+        LaunchTemplate: { LaunchTemplateId: this.config.launchTemplateId, Version: "$Latest" },
+        InstanceType: instanceType,
         MinCount: 1, MaxCount: 1,
         TagSpecifications: [{ ResourceType: "instance", Tags: [
           { Key: "nvos:vm-id", Value: vmId }, { Key: "nvos:slug", Value: slug }, { Key: "nvos:user-id", Value: userId },
@@ -86,7 +97,7 @@ export class VmService {
       instanceId = launched.Instances?.[0]?.InstanceId;
       if (!instanceId) throw new VmServiceError("EC2 did not return an instance ID.");
       const instance = await this.waitForState(instanceId, "running");
-      this.logger.info({ vmId, instanceId, publicIp: instance.PublicIpAddress }, "Instance running");
+      this.logger.info({ vmId, userId, plan, instanceType, instanceId, publicIp: instance.PublicIpAddress }, "Instance running");
       if (!instance.PrivateIpAddress) throw new VmServiceError("EC2 instance has no private IP.");
       await this.waitForDesktop(instance.PrivateIpAddress);
       this.logger.info({ vmId, instanceId }, "Desktop ready");
@@ -95,7 +106,7 @@ export class VmService {
       await this.caddy.addRoute(host, instance.PrivateIpAddress);
       return this.result(vmId, slug, instance, "running");
     } catch (error) {
-      this.logger.error({ vmId, instanceId, error: error instanceof Error ? error.message : "Unknown error" }, "Provisioning failed");
+      this.logger.error({ vmId, userId, plan, instanceType, instanceId, error: error instanceof Error ? error.message : "Unknown error" }, "Provisioning failed");
       if (instanceId) {
         try { await this.ec2.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] })); }
         catch (cleanupError) { this.logger.error({ vmId, instanceId, error: cleanupError instanceof Error ? cleanupError.message : "Unknown error" }, "Failed to terminate orphaned instance"); }

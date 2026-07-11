@@ -90,6 +90,10 @@ export const virtualMachine = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    plan: text("plan"),
+    instanceType: text("instance_type").notNull(),
     slug: text("slug").notNull(),
     hostname: text("hostname").notNull(),
     instanceId: text("instance_id"),

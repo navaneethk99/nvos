@@ -18,7 +18,7 @@ const ephemeralTags = [
   { Key: "Ephemeral", Value: "true" },
 ];
 
-export async function launchEphemeralComputer(): Promise<LaunchedComputer> {
+export async function launchEphemeralComputer(instanceType = "t3.micro"): Promise<LaunchedComputer> {
   const configuration = getEc2LaunchConfiguration();
 
   const userDataScript = `#!/bin/bash
@@ -50,7 +50,7 @@ export async function launchEphemeralComputer(): Promise<LaunchedComputer> {
   const response = await getEc2Client().send(
     new RunInstancesCommand({
       ImageId: configuration.amiId,
-      InstanceType: configuration.instanceType as _InstanceType,
+      InstanceType: instanceType as _InstanceType,
       KeyName: configuration.keyName,
       MinCount: 1,
       MaxCount: 1,
@@ -84,6 +84,6 @@ export async function launchEphemeralComputer(): Promise<LaunchedComputer> {
   return {
     instanceId: launchedInstance.InstanceId,
     state: launchedInstance.State.Name,
-    instanceType: configuration.instanceType,
+    instanceType,
   };
 }

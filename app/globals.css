@@ -9,3 +9,151 @@
     }
   }
 }
+
+@keyframes dashboard-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: scale(.94) translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes modal-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(.96) translateY(12px);
+  }
+}
+
+@keyframes create-ripple {
+  from { transform: translate(-50%, -50%) scale(0); }
+  to { transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes loading-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(340%); }
+}
+
+@keyframes provisioning-message-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(65%) skewY(4deg);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) skewY(0);
+  }
+}
+
+@keyframes termination-scan {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(420%); }
+}
+
+.motion-dashboard-intro {
+  animation: dashboard-rise 480ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.motion-instance-card {
+  animation: dashboard-rise 520ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.motion-instance-card:nth-child(2) { animation-delay: 80ms; }
+.motion-instance-card:nth-child(3) { animation-delay: 140ms; }
+.motion-instance-card:nth-child(4) { animation-delay: 200ms; }
+
+.motion-modal-backdrop { animation: backdrop-in 180ms ease-out both; }
+.motion-modal-panel { animation: modal-in 320ms cubic-bezier(.2, .85, .25, 1.1) both; }
+.motion-modal-backdrop-out { animation: backdrop-out 240ms ease-in both; }
+.motion-modal-panel-out { animation: modal-out 240ms cubic-bezier(.4, 0, 1, 1) both; }
+
+.motion-create-ripple {
+  width: 220vmax;
+  height: 220vmax;
+  animation: create-ripple 860ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.motion-create-content {
+  animation: dashboard-rise 420ms 170ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.motion-loading-bar {
+  width: 32%;
+  animation: loading-sweep 1.2s 450ms ease-in-out infinite;
+}
+
+.motion-provisioning-message {
+  animation: provisioning-message-in 620ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.motion-terminate-ripple {
+  width: 220vmax;
+  height: 220vmax;
+  animation: create-ripple 860ms cubic-bezier(.16, 1, .3, 1) both;
+}
+
+.motion-termination-content {
+  animation: dashboard-rise 420ms 230ms cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.motion-termination-scan {
+  width: 28%;
+  animation: termination-scan 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-dashboard-intro,
+  .motion-instance-card,
+  .motion-modal-backdrop,
+  .motion-modal-panel,
+  .motion-modal-backdrop-out,
+  .motion-modal-panel-out,
+  .motion-create-ripple,
+  .motion-create-content,
+  .motion-loading-bar,
+  .motion-provisioning-message,
+  .motion-terminate-ripple,
+  .motion-termination-content,
+  .motion-termination-scan {
+    animation: none;
+  }
+
+  .motion-create-ripple {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .motion-terminate-ripple {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

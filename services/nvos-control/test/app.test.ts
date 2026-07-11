@@ -10,7 +10,7 @@ describe("control API", () => {
     const service = { create: vi.fn().mockResolvedValue(vm), start: vi.fn(), stop: vi.fn(), terminate: vi.fn(), status: vi.fn() } as never;
     const app = buildApp(config, { service });
     await expect(app.inject({ method: "GET", url: "/health" }).then((response) => response.statusCode)).resolves.toBe(401);
-    await expect(app.inject({ method: "POST", url: "/internal/vms", payload: { vmId: "vm-1", slug: "terry-bobby-black", userId: "user-1" } }).then((response) => response.statusCode)).resolves.toBe(401);
+    await expect(app.inject({ method: "POST", url: "/internal/vms", payload: { vmId: "vm-1", slug: "terry-bobby-black", userId: "user-1", plan: "micro" } }).then((response) => response.statusCode)).resolves.toBe(401);
     await app.close();
   });
 
@@ -18,9 +18,20 @@ describe("control API", () => {
     const create = vi.fn().mockResolvedValue(vm);
     const service = { create, start: vi.fn(), stop: vi.fn(), terminate: vi.fn(), status: vi.fn() } as never;
     const app = buildApp(config, { service });
-    const response = await app.inject({ method: "POST", url: "/internal/vms", headers: { authorization: "Bearer test-secret" }, payload: { vmId: "vm-1", slug: "terry-bobby-black", userId: "user-1" } });
+    const response = await app.inject({ method: "POST", url: "/internal/vms", headers: { authorization: "Bearer test-secret" }, payload: { vmId: "vm-1", slug: "terry-bobby-black", userId: "user-1", plan: "small" } });
     expect(response.statusCode).toBe(201);
-    expect(create).toHaveBeenCalledWith("vm-1", "terry-bobby-black", "user-1");
+    expect(create).toHaveBeenCalledWith("vm-1", "terry-bobby-black", "user-1", "small");
+    await app.close();
+  });
+
+  it("rejects unsupported plans before calling the service", async () => {
+    const create = vi.fn();
+    const service = { create, start: vi.fn(), stop: vi.fn(), terminate: vi.fn(), status: vi.fn() } as never;
+    const app = buildApp(config, { service });
+    const response = await app.inject({ method: "POST", url: "/internal/vms", headers: { authorization: "Bearer test-secret" }, payload: { vmId: "vm-1", slug: "terry-bobby-black", userId: "user-1", plan: "c7i.large" } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: "A supported VM plan is required." });
+    expect(create).not.toHaveBeenCalled();
     await app.close();
   });
 });

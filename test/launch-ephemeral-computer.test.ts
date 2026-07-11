@@ -36,10 +36,10 @@ describe("launchEphemeralComputer", () => {
       ],
     });
 
-    await expect(launchEphemeralComputer()).resolves.toEqual({
+    await expect(launchEphemeralComputer("t3.medium")).resolves.toEqual({
       instanceId: "i-test",
       state: "pending",
-      instanceType: "t3.micro",
+      instanceType: "t3.medium",
     });
 
     expect(send).toHaveBeenCalledTimes(1);
@@ -47,7 +47,7 @@ describe("launchEphemeralComputer", () => {
     expect(command).toBeInstanceOf(RunInstancesCommand);
     expect(command.input).toMatchObject({
       ImageId: "ami-test",
-      InstanceType: "t3.micro",
+      InstanceType: "t3.medium",
       KeyName: "test-key",
       MinCount: 1,
       MaxCount: 1,

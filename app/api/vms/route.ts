@@ -1,10 +1,11 @@
-import { and, desc, eq, lt, notInArray } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
-import { type VmStatus, virtualMachine } from "@/db/schema";
+import { virtualMachine } from "@/db/schema";
 import { ControlServiceError, createVm, getVmStatus } from "@/lib/vm-control-client";
 import { getVmConfig } from "@/lib/vm-config";
+import { INSTANCE_TYPES, isVmPlan } from "@/lib/vm-plan";
 import { publicVm, requireVmUser, controlFailureResponse } from "@/lib/vm-route";
 import { generateUniqueVmSlug } from "@/lib/vm-slug";
 import { isTransitionalVmStatus } from "@/lib/vm-status";
@@ -12,7 +13,14 @@ import { isTransitionalVmStatus } from "@/lib/vm-status";
 // Provisioning waits for the proxy to verify desktop readiness.
 export const maxDuration = 300;
 
-const terminalStatuses: VmStatus[] = ["terminated", "failed"];
+function parseCreateRequest(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const { name, description, plan } = value as Record<string, unknown>;
+  const cleanName = typeof name === "string" ? name.trim() : "";
+  const cleanDescription = typeof description === "string" ? description.trim() : "";
+  if (!cleanName || cleanName.length > 80 || cleanDescription.length > 500 || !isVmPlan(plan)) return null;
+  return { name: cleanName, description: cleanDescription || null, plan };
+}
 
 export async function GET() {
   const user = await requireVmUser();
@@ -22,9 +30,8 @@ export async function GET() {
   await db.update(virtualMachine).set({ status: "failed", failureReason: "Provisioning did not complete. Please try again.", updatedAt: new Date() })
     .where(and(eq(virtualMachine.userId, user.id), eq(virtualMachine.status, "provisioning"), lt(virtualMachine.createdAt, new Date(Date.now() - 10 * 60 * 1_000))));
   const storedVms = await db.select().from(virtualMachine).where(eq(virtualMachine.userId, user.id)).orderBy(desc(virtualMachine.createdAt));
-  const activeVm = storedVms.find((vm) => vm.status !== "terminated" && vm.status !== "failed");
   let vms = storedVms;
-  if (activeVm && isTransitionalVmStatus(activeVm.status)) {
+  for (const activeVm of storedVms.filter((vm) => isTransitionalVmStatus(vm.status))) {
     try {
       const controlled = await getVmStatus(activeVm.id);
       const [updated] = await db.update(virtualMachine).set({
@@ -36,7 +43,7 @@ export async function GET() {
         terminatedAt: controlled.status === "terminated" ? new Date() : activeVm.terminatedAt,
         updatedAt: new Date(),
       }).where(eq(virtualMachine.id, activeVm.id)).returning();
-      vms = storedVms.map((vm) => vm.id === updated.id ? updated : vm);
+      vms = vms.map((vm) => vm.id === updated.id ? updated : vm);
     } catch (error) {
       console.warn("Active VM reconciliation was unavailable", {
         vmId: activeVm.id,
@@ -47,27 +54,26 @@ export async function GET() {
   return NextResponse.json({ vms: vms.map(publicVm) }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const user = await requireVmUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const active = await db.select({ id: virtualMachine.id }).from(virtualMachine)
-    .where(and(eq(virtualMachine.userId, user.id), notInArray(virtualMachine.status, terminalStatuses))).limit(1);
-  if (active[0]) return NextResponse.json({ error: "You already have an active VM." }, { status: 409 });
+  let input: ReturnType<typeof parseCreateRequest>;
+  try { input = parseCreateRequest(await request.json()); } catch { input = null; }
+  if (!input) return NextResponse.json({ error: "Enter a valid name and select a supported plan." }, { status: 400 });
 
   try {
     const slug = await generateUniqueVmSlug(async (candidate) => !(await db.select({ id: virtualMachine.id }).from(virtualMachine).where(eq(virtualMachine.slug, candidate)).limit(1))[0]);
     const hostname = `${slug}.${getVmConfig().baseDomain}`;
     let vm: typeof virtualMachine.$inferSelect;
     try {
-      [vm] = await db.insert(virtualMachine).values({ userId: user.id, slug, hostname, status: "provisioning" }).returning();
+      [vm] = await db.insert(virtualMachine).values({ userId: user.id, name: input.name, description: input.description, plan: input.plan, instanceType: INSTANCE_TYPES[input.plan], slug, hostname, status: "provisioning" }).returning();
     } catch (error) {
-      if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "23505") return NextResponse.json({ error: "You already have an active VM." }, { status: 409 });
+      if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "23505") return NextResponse.json({ error: "That VM address is already in use. Please retry." }, { status: 409 });
       throw error;
     }
 
     try {
-      const controlled = await createVm({ vmId: vm.id, slug, userId: user.id });
+      const controlled = await createVm({ vmId: vm.id, slug, userId: user.id, plan: input.plan });
       const [updated] = await db.update(virtualMachine).set({ instanceId: controlled.instanceId, privateIp: controlled.privateIp, hostname: controlled.hostname, status: controlled.status, updatedAt: new Date() }).where(eq(virtualMachine.id, vm.id)).returning();
       return NextResponse.json({ vm: publicVm(updated) }, { status: controlled.status === "provisioning" || controlled.status === "starting" ? 202 : 201 });
     } catch (error) {

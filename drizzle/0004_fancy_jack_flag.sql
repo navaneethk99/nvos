@@ -1,0 +1,1 @@
+ALTER TABLE "virtual_machine" ADD COLUMN "plan" text;

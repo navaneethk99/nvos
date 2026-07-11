@@ -6,9 +6,19 @@ import type { ControlConfig } from "./config";
 import { VmService, VmServiceError } from "./vm-service";
 
 type Dependencies = { service?: VmService };
-type CreateBody = { vmId?: unknown; slug?: unknown; userId?: unknown };
+type CreateBody = { vmId?: unknown; slug?: unknown; userId?: unknown; plan?: unknown };
+
+const INSTANCE_TYPES = {
+  micro: "t3.micro",
+  small: "t3.small",
+  medium: "t3.medium",
+  large: "t3.large",
+} as const;
+
+type VmPlan = keyof typeof INSTANCE_TYPES;
 
 function isSlug(value: unknown): value is string { return typeof value === "string" && /^[a-z0-9]+(?:-[a-z0-9]+){2,3}$/.test(value); }
+function isVmPlan(value: unknown): value is VmPlan { return typeof value === "string" && value in INSTANCE_TYPES; }
 
 export function buildApp(config: ControlConfig, dependencies: Dependencies = {}): FastifyInstance {
   const app = Fastify({ logger: true });
@@ -28,9 +38,9 @@ export function buildApp(config: ControlConfig, dependencies: Dependencies = {})
   app.get("/health", async () => ({ status: "ok" }));
 
   app.post<{ Body: CreateBody }>("/internal/vms", async (request, reply) => {
-    const { vmId, slug, userId } = request.body ?? {};
-    if (typeof vmId !== "string" || !isSlug(slug) || typeof userId !== "string") return reply.code(400).send({ error: "Invalid VM request." });
-    return reply.code(201).send(await service.create(vmId, slug, userId));
+    const { vmId, slug, userId, plan } = request.body ?? {};
+    if (typeof vmId !== "string" || !isSlug(slug) || typeof userId !== "string" || !isVmPlan(plan)) return reply.code(400).send({ error: "A supported VM plan is required." });
+    return reply.code(201).send(await service.create(vmId, slug, userId, plan));
   });
 
   app.post<{ Params: { id: string } }>("/internal/vms/:id/start", async (request) => service.start(request.params.id));

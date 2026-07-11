@@ -17,7 +17,8 @@ export async function requireVmUser() {
 
 export function publicVm(vm: typeof virtualMachine.$inferSelect) {
   return {
-    id: vm.id, slug: vm.slug, hostname: vm.hostname, status: vm.status,
+    id: vm.id, name: vm.name, description: vm.description, plan: vm.plan, instanceType: vm.instanceType,
+    slug: vm.slug, hostname: vm.hostname, status: vm.status,
     failureReason: vm.failureReason, createdAt: vm.createdAt, updatedAt: vm.updatedAt,
     stoppedAt: vm.stoppedAt, terminatedAt: vm.terminatedAt,
     url: getVmUrl(vm.slug, getVmConfig().baseDomain),
