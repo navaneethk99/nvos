@@ -20,13 +20,13 @@ describe("VmService", () => {
     const result = await service.create("vm-1", "terry-bobby-black", "user-1", "medium", "ubuntu");
     const launch = send.mock.calls[0][0] as RunInstancesCommand;
     expect(launch.input.LaunchTemplate).toEqual({ LaunchTemplateId: "lt-ubuntu", Version: "$Latest" });
-    expect(launch.input.InstanceType).toBe("t3.medium");
+    expect(launch.input.InstanceType).toBe("c7i-flex.large");
     expect(launch.input.MinCount).toBe(1);
     expect(launch.input.MaxCount).toBe(1);
     expect(launch.input.TagSpecifications?.[0].Tags).toContainEqual({ Key: "nvos:vm-id", Value: "vm-1" });
     expect(launch.input.TagSpecifications?.[0].Tags).toContainEqual({ Key: "nvos:os", Value: "ubuntu" });
     expect(caddy.addRoute).toHaveBeenCalledWith("terry-bobby-black.vm.nvos.in", "172.31.1.4");
-    expect(logger.info).toHaveBeenCalledWith({ vmId: "vm-1", userId: "user-1", os: "ubuntu", plan: "medium", instanceType: "t3.medium", launchTemplateId: "lt-ubuntu", instanceId: "i-123" }, "EC2 instance launched");
+    expect(logger.info).toHaveBeenCalledWith({ vmId: "vm-1", userId: "user-1", os: "ubuntu", plan: "medium", instanceType: "c7i-flex.large", launchTemplateId: "lt-ubuntu", instanceId: "i-123" }, "EC2 instance launched");
     expect(result).toMatchObject({ instanceId: "i-123", slug: "terry-bobby-black", status: "running" });
   });
 

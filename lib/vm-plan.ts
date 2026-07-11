@@ -1,8 +1,8 @@
 export const INSTANCE_TYPES = {
   micro: "t3.micro",
   small: "t3.small",
-  medium: "t3.medium",
-  large: "t3.large",
+  medium: "c7i-flex.large",
+  large: "m7i-flex.large",
 } as const;
 
 export type VmPlan = keyof typeof INSTANCE_TYPES;

@@ -31,16 +31,43 @@ export type PublicVm = {
 const instanceSpecs = {
   "t3.micro": "2 vCPU / 1 GiB",
   "t3.small": "2 vCPU / 2 GiB",
-  "t3.medium": "2 vCPU / 4 GiB",
-  "t3.large": "2 vCPU / 8 GiB",
+  "c7i-flex.large": "2 vCPU / 4 GiB",
+  "m7i-flex.large": "2 vCPU / 8 GiB",
 } as const;
 
-const machinePlans = [
-  { value: "micro", name: "Micro", ram: "1 GB RAM" },
-  { value: "small", name: "Small", ram: "2 GB RAM" },
-  { value: "medium", name: "Medium", ram: "4 GB RAM" },
-  { value: "large", name: "Large", ram: "8 GB RAM" },
+export const machinePlans = [
+  { value: "micro", name: "Micro", resources: "2 vCPU, 1 GB RAM" },
+  { value: "small", name: "Small", resources: "2 vCPU, 2 GB RAM" },
+  { value: "medium", name: "Medium", resources: "2 vCPU, 4 GB RAM" },
+  { value: "large", name: "Large", resources: "2 vCPU, 8 GB RAM" },
 ] as const;
+
+type VmPlan = (typeof machinePlans)[number]["value"];
+
+export const defaultVmOperatingSystem: VmOperatingSystem = "ubuntu";
+
+export function isPlanAvailableForOperatingSystem(
+  os: VmOperatingSystem,
+  plan: VmPlan,
+) {
+  return os === "ubuntu" || plan === "medium" || plan === "large";
+}
+
+export function compatiblePlanForOperatingSystem(
+  os: VmOperatingSystem,
+  plan: VmPlan,
+) {
+  return isPlanAvailableForOperatingSystem(os, plan) ? plan : "medium";
+}
+
+export function vmCreateRequest(
+  name: string,
+  description: string,
+  plan: VmPlan,
+  os: VmOperatingSystem,
+) {
+  return { name, description, plan, os };
+}
 
 const provisioningMessages = [
   "Spinning up your computer.",
@@ -76,8 +103,8 @@ export function VmManager({ initialVms }: { initialVms: PublicVm[] }) {
   const [modalClosing, setModalClosing] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [plan, setPlan] =
-    useState<(typeof machinePlans)[number]["value"]>("micro");
+  const [os, setOs] = useState<VmOperatingSystem>(defaultVmOperatingSystem);
+  const [plan, setPlan] = useState<VmPlan>("micro");
   const [pending, setPending] = useState<string | null>(null);
   const [createTransition, setCreateTransition] = useState<{
     x: number;
@@ -175,7 +202,7 @@ export function VmManager({ initialVms }: { initialVms: PublicVm[] }) {
       const response = await fetch("/api/vms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, plan }),
+        body: JSON.stringify(vmCreateRequest(name, description, plan, os)),
       });
       const data = (await response.json()) as { vm?: PublicVm; error?: string };
       if (!response.ok || !data.vm)
@@ -188,6 +215,7 @@ export function VmManager({ initialVms }: { initialVms: PublicVm[] }) {
       setModalOpen(false);
       setName("");
       setDescription("");
+      setOs(defaultVmOperatingSystem);
       setPlan("micro");
       router.refresh();
     } catch (reason) {
@@ -422,33 +450,67 @@ export function VmManager({ initialVms }: { initialVms: PublicVm[] }) {
             </label>
             <fieldset className="mt-5">
               <legend className="font-mono text-[10px] tracking-[.12em]">
-                MACHINE SIZE
+                OPERATING SYSTEM
               </legend>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                {machinePlans.map((option) => (
+                {(["ubuntu", "windows"] as const).map((option) => (
                   <label
-                    className={`cursor-pointer border p-3 ${plan === option.value ? "border-[#3973ff] bg-[#b9e7d2]/35" : "border-[#0d2236]/25 bg-white/35"}`}
-                    key={option.value}
+                    className={`cursor-pointer border p-3 ${os === option ? "border-[#3973ff] bg-[#b9e7d2]/35" : "border-[#0d2236]/25 bg-white/35"}`}
+                    key={option}
                   >
                     <input
-                      checked={plan === option.value}
+                      checked={os === option}
                       className="sr-only"
-                      name="plan"
-                      onChange={() => setPlan(option.value)}
+                      name="os"
+                      onChange={() => {
+                        setOs(option);
+                        setPlan((currentPlan) =>
+                          compatiblePlanForOperatingSystem(option, currentPlan),
+                        );
+                      }}
                       type="radio"
-                      value={option.value}
+                      value={option}
                     />
                     <span className="block text-sm font-semibold">
-                      {option.name}
-                    </span>
-                    <span className="mt-1 block font-mono text-[10px] text-[#0d2236]/60">
-                      2 vCPU
-                    </span>
-                    <span className="block font-mono text-[10px] text-[#0d2236]/60">
-                      {option.ram}
+                      {option === "ubuntu" ? "Ubuntu" : "Windows"}
                     </span>
                   </label>
                 ))}
+              </div>
+            </fieldset>
+            <fieldset className="mt-5">
+              <legend className="font-mono text-[10px] tracking-[.12em]">
+                MACHINE SIZE
+              </legend>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {machinePlans.map((option) => {
+                  const unavailable = !isPlanAvailableForOperatingSystem(
+                    os,
+                    option.value,
+                  );
+                  return (
+                    <label
+                      className={`${unavailable ? "cursor-not-allowed opacity-40" : "cursor-pointer"} border p-3 ${plan === option.value ? "border-[#3973ff] bg-[#b9e7d2]/35" : "border-[#0d2236]/25 bg-white/35"}`}
+                      key={option.value}
+                    >
+                      <input
+                        checked={plan === option.value}
+                        className="sr-only"
+                        disabled={unavailable}
+                        name="plan"
+                        onChange={() => setPlan(option.value)}
+                        type="radio"
+                        value={option.value}
+                      />
+                      <span className="block text-sm font-semibold">
+                        {option.name}
+                      </span>
+                      <span className="mt-1 block font-mono text-[10px] text-[#0d2236]/60">
+                        {option.resources}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
             </fieldset>
             {error ? (

@@ -18,8 +18,8 @@ const pollMs = 3_000;
 const INSTANCE_TYPES = {
   micro: "t3.micro",
   small: "t3.small",
-  medium: "t3.medium",
-  large: "t3.large",
+  medium: "c7i-flex.large",
+  large: "m7i-flex.large",
 } as const;
 
 type VmPlan = keyof typeof INSTANCE_TYPES;
