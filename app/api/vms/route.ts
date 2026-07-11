@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { type VmStatus, virtualMachine } from "@/db/schema";
-import { ControlServiceError, createVm } from "@/lib/vm-control-client";
+import { ControlServiceError, createVm, getVmStatus } from "@/lib/vm-control-client";
 import { getVmConfig } from "@/lib/vm-config";
 import { publicVm, requireVmUser, controlFailureResponse } from "@/lib/vm-route";
 import { generateUniqueVmSlug } from "@/lib/vm-slug";
@@ -20,7 +20,27 @@ export async function GET() {
   // A control service outage must not leave old provisioning records blocking users forever.
   await db.update(virtualMachine).set({ status: "failed", failureReason: "Provisioning did not complete. Please try again.", updatedAt: new Date() })
     .where(and(eq(virtualMachine.userId, user.id), eq(virtualMachine.status, "provisioning"), lt(virtualMachine.createdAt, new Date(Date.now() - 10 * 60 * 1_000))));
-  const vms = await db.select().from(virtualMachine).where(eq(virtualMachine.userId, user.id)).orderBy(desc(virtualMachine.createdAt));
+  const storedVms = await db.select().from(virtualMachine).where(eq(virtualMachine.userId, user.id)).orderBy(desc(virtualMachine.createdAt));
+  const vms = await Promise.all(storedVms.map(async (vm) => {
+    if (vm.status !== "failed") return vm;
+    try {
+      const controlled = await getVmStatus(vm.id);
+      const [updated] = await db.update(virtualMachine).set({
+        status: controlled.status,
+        instanceId: controlled.instanceId ?? vm.instanceId,
+        privateIp: controlled.privateIp ?? vm.privateIp,
+        failureReason: null,
+        stoppedAt: controlled.status === "stopped" ? new Date() : vm.stoppedAt,
+        terminatedAt: controlled.status === "terminated" ? new Date() : vm.terminatedAt,
+        updatedAt: new Date(),
+      }).where(eq(virtualMachine.id, vm.id)).returning();
+      return updated;
+    } catch (error) {
+      // A failed launch has no EC2 tags to reconcile; retain its safe failure state.
+      console.warn("Failed VM reconciliation was unavailable", { vmId: vm.id, errorKind: error instanceof ControlServiceError ? error.kind : error instanceof Error ? error.name : "UnknownError" });
+      return vm;
+    }
+  }));
   return NextResponse.json({ vms: vms.map(publicVm) }, { headers: { "Cache-Control": "no-store" } });
 }
 
