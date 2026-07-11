@@ -2,6 +2,10 @@ export type ControlConfig = {
   awsRegion: string;
   launchTemplateId: string;
   windowsLaunchTemplateId: string;
+  guacamoleUrl: string;
+  guacamoleUsername: string;
+  guacamolePassword: string;
+  guacamoleRdpPassword: string;
   controlSecret: string;
   vmBaseDomain: string;
   caddyAdminUrl: string;
@@ -24,6 +28,10 @@ export function loadConfig(env = process.env): ControlConfig {
     awsRegion: env.AWS_REGION?.trim() || "ap-south-1",
     launchTemplateId: env.NVOS_EC2_LAUNCH_TEMPLATE_ID?.trim() || "",
     windowsLaunchTemplateId: env.AWS_WINDOWS_LAUNCH_TEMPLATE_ID?.trim() || "",
+    guacamoleUrl: (env.GUACAMOLE_URL?.trim() || "").replace(/\/$/, ""),
+    guacamoleUsername: env.GUACAMOLE_USERNAME?.trim() || "",
+    guacamolePassword: env.GUACAMOLE_PASSWORD ?? "",
+    guacamoleRdpPassword: env.GUACAMOLE_RDP_PASSWORD ?? "",
     controlSecret: required("NVOS_CONTROL_SECRET", env),
     vmBaseDomain,
     caddyAdminUrl: (env.CADDY_ADMIN_URL?.trim() || "http://127.0.0.1:2019").replace(/\/$/, ""),

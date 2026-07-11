@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import { CaddyClient } from "./caddy-client";
 import type { ControlConfig } from "./config";
+import { GuacamoleClient } from "./guacamole-client";
 import { VmService, VmServiceError, type VmOperatingSystem } from "./vm-service";
 
 type Dependencies = { service?: VmService };
@@ -23,7 +24,13 @@ function isVmOperatingSystem(value: unknown): value is VmOperatingSystem { retur
 
 export function buildApp(config: ControlConfig, dependencies: Dependencies = {}): FastifyInstance {
   const app = Fastify({ logger: true });
-  const service = dependencies.service ?? new VmService(new EC2Client({ region: config.awsRegion }), new CaddyClient(config.caddyAdminUrl), config, app.log);
+  const service = dependencies.service ?? new VmService(
+    new EC2Client({ region: config.awsRegion }),
+    new CaddyClient(config.caddyAdminUrl),
+    config,
+    app.log,
+    new GuacamoleClient(config.guacamoleUrl, config.guacamoleUsername, config.guacamolePassword, config.guacamoleRdpPassword),
+  );
 
   app.addHook("onRequest", async (request, reply) => {
     const expected = `Bearer ${config.controlSecret}`;

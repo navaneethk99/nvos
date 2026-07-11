@@ -1,11 +1,11 @@
-import { DescribeInstancesCommand, RunInstancesCommand } from "@aws-sdk/client-ec2";
+import { DescribeInstancesCommand, RunInstancesCommand, TerminateInstancesCommand } from "@aws-sdk/client-ec2";
 import { EventEmitter } from "node:events";
 import type { Socket } from "node:net";
 import { describe, expect, it, vi } from "vitest";
 import type { ControlConfig } from "../src/config";
 import { VmService } from "../src/vm-service";
 
-const config: ControlConfig = { awsRegion: "ap-south-1", launchTemplateId: "lt-ubuntu", windowsLaunchTemplateId: "lt-windows", controlSecret: "secret", vmBaseDomain: "vm.nvos.in", caddyAdminUrl: "http://127.0.0.1:2019", host: "127.0.0.1", port: 3001 };
+const config: ControlConfig = { awsRegion: "ap-south-1", launchTemplateId: "lt-ubuntu", windowsLaunchTemplateId: "lt-windows", guacamoleUrl: "http://guacamole.test", guacamoleUsername: "guacadmin", guacamolePassword: "secret", guacamoleRdpPassword: "windows-secret", controlSecret: "secret", vmBaseDomain: "vm.nvos.in", caddyAdminUrl: "http://127.0.0.1:2019", host: "127.0.0.1", port: 3001 };
 
 type ReadinessOptions = {
   fetchImpl?: typeof fetch;
@@ -13,13 +13,23 @@ type ReadinessOptions = {
 };
 
 function createService(overrides: Partial<ControlConfig> = {}, readiness: ReadinessOptions = {}) {
-  const instance = { InstanceId: "i-123", PrivateIpAddress: "172.31.1.4", PublicIpAddress: "13.1.2.3", State: { Name: "running" } };
-  const send = vi.fn(async (command: unknown) => command instanceof RunInstancesCommand ? { Instances: [instance] } : command instanceof DescribeInstancesCommand ? { Reservations: [{ Instances: [instance] }] } : {});
+  let state = "running";
+  const instance = { InstanceId: "i-123", PrivateIpAddress: "172.31.1.4", PublicIpAddress: "13.1.2.3", State: { Name: state }, Tags: [{ Key: "nvos:slug", Value: "terry-bobby-black" }, { Key: "nvos:os", Value: "windows" }] };
+  const send = vi.fn(async (command: unknown) => {
+    if (command instanceof RunInstancesCommand) return { Instances: [instance] };
+    if (command instanceof TerminateInstancesCommand) {
+      state = "terminated";
+      return {};
+    }
+    if (command instanceof DescribeInstancesCommand) return { Reservations: [{ Instances: [{ ...instance, State: { Name: state } }] }] };
+    return {};
+  });
   const caddy = { addRoute: vi.fn(), removeRoute: vi.fn() } as never;
+  const guacamole = { createRdpConnection: vi.fn().mockResolvedValue("42"), deleteRdpConnection: vi.fn().mockResolvedValue(undefined) };
   const logger = { info: vi.fn(), error: vi.fn() };
   const fetchImpl = readiness.fetchImpl ?? vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
-  const service = new VmService({ send } as never, caddy, { ...config, ...overrides }, logger, fetchImpl, readiness.connectImpl);
-  return { caddy, fetchImpl, logger, send, service };
+  const service = new VmService({ send } as never, caddy, { ...config, ...overrides }, logger, guacamole, fetchImpl, readiness.connectImpl);
+  return { caddy, fetchImpl, guacamole, logger, send, service };
 }
 
 describe("VmService", () => {
@@ -45,7 +55,7 @@ describe("VmService", () => {
       queueMicrotask(() => socket.emit("connect"));
       return socket;
     });
-    const { caddy, fetchImpl, send, service } = createService({}, { connectImpl });
+    const { caddy, fetchImpl, guacamole, send, service } = createService({}, { connectImpl });
     await service.create("vm-1", "terry-bobby-black", "user-1", "small", "windows");
     const launch = send.mock.calls[0][0] as RunInstancesCommand;
     expect(launch.input.LaunchTemplate).toEqual({ LaunchTemplateId: "lt-windows", Version: "$Latest" });
@@ -55,6 +65,14 @@ describe("VmService", () => {
     expect(socket.end).toHaveBeenCalled();
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(caddy.addRoute).not.toHaveBeenCalled();
+    expect(guacamole.createRdpConnection).toHaveBeenCalledWith("vm-1", "172.31.1.4");
+  });
+
+  it("removes the Windows Guacamole connection after EC2 termination", async () => {
+    const { caddy, guacamole, service } = createService();
+    await service.terminate("vm-1");
+    expect(guacamole.deleteRdpConnection).toHaveBeenCalledWith("vm-1");
+    expect(caddy.removeRoute).not.toHaveBeenCalled();
   });
 
   it("fails before calling AWS when Windows is not configured", async () => {

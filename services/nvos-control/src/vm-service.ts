@@ -11,6 +11,7 @@ import { connect, type Socket } from "node:net";
 
 import type { ControlConfig } from "./config";
 import { CaddyClient } from "./caddy-client";
+import { type GuacamoleClient } from "./guacamole-client";
 
 const stateTimeoutMs = 10 * 60 * 1_000;
 const desktopTimeoutMs = 5 * 60 * 1_000;
@@ -32,6 +33,7 @@ export class VmServiceError extends Error {
 
 export type VmResult = { vmId: string; slug: string; instanceId: string; privateIp: string; status: "running" | "stopped" | "terminated"; hostname: string; url: string };
 type Logger = { info: (data: object, message?: string) => void; error: (data: object, message?: string) => void };
+type GuacamoleService = Pick<GuacamoleClient, "createRdpConnection" | "deleteRdpConnection">;
 
 function sleep(ms: number) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
@@ -41,6 +43,7 @@ export class VmService {
     private readonly caddy: CaddyClient,
     private readonly config: ControlConfig,
     private readonly logger: Logger,
+    private readonly guacamole: GuacamoleService,
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly connectImpl: (options: { host: string; port: number }) => Socket = connect,
   ) {}
@@ -148,7 +151,8 @@ export class VmService {
         await this.caddy.addRoute(host, instance.PrivateIpAddress);
       } else {
         await this.waitForRdp(instance.PrivateIpAddress);
-        this.logger.info({ vmId, instanceId }, "RDP ready; awaiting Guacamole automation");
+        const connectionId = await this.guacamole.createRdpConnection(vmId, instance.PrivateIpAddress);
+        this.logger.info({ vmId, instanceId, connectionId }, "RDP and Guacamole connection ready");
       }
       return this.result(vmId, slug, instance, "running");
     } catch (error) {
@@ -187,25 +191,35 @@ export class VmService {
   async stop(vmId: string) {
     const instance = await this.findInstance(vmId);
     const slug = instance.Tags?.find((tag) => tag.Key === "nvos:slug")?.Value;
+    const os = instance.Tags?.find((tag) => tag.Key === "nvos:os")?.Value === "windows" ? "windows" : "ubuntu";
     if (!instance.InstanceId || !slug) throw new VmServiceError("VM metadata is incomplete.");
     this.logger.info({ vmId, instanceId: instance.InstanceId }, "Stopping instance");
     if (instance.State?.Name !== "stopped") await this.ec2.send(new StopInstancesCommand({ InstanceIds: [instance.InstanceId] }));
-    this.logger.info({ vmId, host: this.hostname(slug) }, "Removing Caddy route");
-    await this.caddy.removeRoute(this.hostname(slug));
+    if (os === "ubuntu") {
+      this.logger.info({ vmId, host: this.hostname(slug) }, "Removing Caddy route");
+      await this.caddy.removeRoute(this.hostname(slug));
+    }
     return this.result(vmId, slug, { ...instance, PrivateIpAddress: instance.PrivateIpAddress ?? "0.0.0.0" }, "stopped");
   }
 
   async terminate(vmId: string) {
     const instance = await this.findInstance(vmId);
     const slug = instance.Tags?.find((tag) => tag.Key === "nvos:slug")?.Value;
+    const os = instance.Tags?.find((tag) => tag.Key === "nvos:os")?.Value === "windows" ? "windows" : "ubuntu";
     if (!instance.InstanceId || !slug) throw new VmServiceError("VM metadata is incomplete.");
-    this.logger.info({ vmId, host: this.hostname(slug) }, "Removing Caddy route");
-    await this.caddy.removeRoute(this.hostname(slug));
+    if (os === "ubuntu") {
+      this.logger.info({ vmId, host: this.hostname(slug) }, "Removing Caddy route");
+      await this.caddy.removeRoute(this.hostname(slug));
+    }
     if (instance.State?.Name !== "terminated") {
       this.logger.info({ vmId, instanceId: instance.InstanceId }, "Terminating instance");
       await this.ec2.send(new TerminateInstancesCommand({ InstanceIds: [instance.InstanceId] }));
     }
     const terminated = await this.waitForState(instance.InstanceId, "terminated");
+    if (os === "windows") {
+      await this.guacamole.deleteRdpConnection(vmId);
+      this.logger.info({ vmId }, "Guacamole connection removed");
+    }
     return this.result(vmId, slug, { ...terminated, PrivateIpAddress: terminated.PrivateIpAddress ?? instance.PrivateIpAddress ?? "0.0.0.0" }, "terminated");
   }
 
