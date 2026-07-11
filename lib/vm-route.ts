@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
-import { type VmStatus, virtualMachine } from "@/db/schema";
+import { type VmStatus, virtualMachine, vmOperatingSystems } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getVmUrl } from "@/lib/vm-status";
 import { getVmConfig } from "@/lib/vm-config";
@@ -17,7 +17,7 @@ export async function requireVmUser() {
 
 export function publicVm(vm: typeof virtualMachine.$inferSelect) {
   return {
-    id: vm.id, name: vm.name, description: vm.description, plan: vm.plan, instanceType: vm.instanceType,
+    id: vm.id, name: vm.name, description: vm.description, plan: vm.plan, os: vm.os, instanceType: vm.instanceType,
     slug: vm.slug, hostname: vm.hostname, status: vm.status,
     failureReason: vm.failureReason, createdAt: vm.createdAt, updatedAt: vm.updatedAt,
     stoppedAt: vm.stoppedAt, terminatedAt: vm.terminatedAt,
@@ -46,4 +46,8 @@ export async function updateOwnedVm(id: string, userId: string, values: Partial<
 
 export function isVmStatus(value: string): value is VmStatus {
   return ["provisioning", "starting", "running", "stopping", "stopped", "terminating", "terminated", "failed"].includes(value);
+}
+
+export function isVmOperatingSystem(value: unknown): value is (typeof vmOperatingSystems)[number] {
+  return typeof value === "string" && vmOperatingSystems.includes(value as (typeof vmOperatingSystems)[number]);
 }

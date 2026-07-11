@@ -21,6 +21,10 @@ export const vmStatuses = [
 
 export type VmStatus = (typeof vmStatuses)[number];
 
+export const vmOperatingSystems = ["ubuntu", "windows"] as const;
+
+export type VmOperatingSystem = (typeof vmOperatingSystems)[number];
+
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -93,6 +97,7 @@ export const virtualMachine = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     plan: text("plan"),
+    os: text("os").$type<VmOperatingSystem>().notNull().default("ubuntu"),
     instanceType: text("instance_type").notNull(),
     slug: text("slug").notNull(),
     hostname: text("hostname").notNull(),

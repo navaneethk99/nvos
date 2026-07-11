@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getVmConfig } from "@/lib/vm-config";
-import type { VmStatus } from "@/db/schema";
+import type { VmOperatingSystem, VmStatus } from "@/db/schema";
 import type { VmPlan } from "@/lib/vm-plan";
 
 // noVNC readiness can take several minutes after EC2 reports running.
@@ -77,7 +77,7 @@ async function request(path: string, method: "GET" | "POST", body?: unknown) {
   }
 }
 
-export function createVm(input: { vmId: string; slug: string; userId: string; plan: VmPlan }) { return request("/internal/vms", "POST", input); }
+export function createVm(input: { vmId: string; slug: string; userId: string; plan: VmPlan; os: VmOperatingSystem }) { return request("/internal/vms", "POST", input); }
 export function startVm(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}/start`, "POST"); }
 export function stopVm(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}/stop`, "POST"); }
 export function terminateVm(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}/terminate`, "POST"); }

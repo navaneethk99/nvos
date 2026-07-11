@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../src/app";
 import type { ControlConfig } from "../src/config";
 
-const config: ControlConfig = { awsRegion: "ap-south-1", launchTemplateId: "lt-test", controlSecret: "test-secret", vmBaseDomain: "vm.nvos.in", caddyAdminUrl: "http://127.0.0.1:2019", host: "127.0.0.1", port: 3001 };
+const config: ControlConfig = { awsRegion: "ap-south-1", launchTemplateId: "lt-test", windowsLaunchTemplateId: "lt-windows", controlSecret: "test-secret", vmBaseDomain: "vm.nvos.in", caddyAdminUrl: "http://127.0.0.1:2019", host: "127.0.0.1", port: 3001 };
 const vm = { vmId: "vm-1", slug: "terry-bobby-black", instanceId: "i-1", privateIp: "172.31.1.4", status: "running" as const, hostname: "terry-bobby-black.vm.nvos.in", url: "https://terry-bobby-black.vm.nvos.in" };
 
 describe("control API", () => {
@@ -18,9 +18,9 @@ describe("control API", () => {
     const create = vi.fn().mockResolvedValue(vm);
     const service = { create, start: vi.fn(), stop: vi.fn(), terminate: vi.fn(), status: vi.fn() } as never;
     const app = buildApp(config, { service });
-    const response = await app.inject({ method: "POST", url: "/internal/vms", headers: { authorization: "Bearer test-secret" }, payload: { vmId: "vm-1", slug: "terry-bobby-black", userId: "user-1", plan: "small" } });
+    const response = await app.inject({ method: "POST", url: "/internal/vms", headers: { authorization: "Bearer test-secret" }, payload: { vmId: "vm-1", slug: "terry-bobby-black", userId: "user-1", plan: "small", os: "windows" } });
     expect(response.statusCode).toBe(201);
-    expect(create).toHaveBeenCalledWith("vm-1", "terry-bobby-black", "user-1", "small");
+    expect(create).toHaveBeenCalledWith("vm-1", "terry-bobby-black", "user-1", "small", "windows");
     await app.close();
   });
 
@@ -31,6 +31,16 @@ describe("control API", () => {
     const response = await app.inject({ method: "POST", url: "/internal/vms", headers: { authorization: "Bearer test-secret" }, payload: { vmId: "vm-1", slug: "terry-bobby-black", userId: "user-1", plan: "c7i.large" } });
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({ error: "A supported VM plan is required." });
+    expect(create).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it("rejects unsupported operating systems before calling the service", async () => {
+    const create = vi.fn();
+    const service = { create, start: vi.fn(), stop: vi.fn(), terminate: vi.fn(), status: vi.fn() } as never;
+    const app = buildApp(config, { service });
+    const response = await app.inject({ method: "POST", url: "/internal/vms", headers: { authorization: "Bearer test-secret" }, payload: { vmId: "vm-1", slug: "terry-bobby-black", userId: "user-1", plan: "micro", os: "macos" } });
+    expect(response.statusCode).toBe(400);
     expect(create).not.toHaveBeenCalled();
     await app.close();
   });

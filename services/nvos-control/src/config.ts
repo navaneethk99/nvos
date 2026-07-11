@@ -1,6 +1,7 @@
 export type ControlConfig = {
   awsRegion: string;
   launchTemplateId: string;
+  windowsLaunchTemplateId: string;
   controlSecret: string;
   vmBaseDomain: string;
   caddyAdminUrl: string;
@@ -21,7 +22,8 @@ export function loadConfig(env = process.env): ControlConfig {
   if (!/^[a-z0-9.-]+$/i.test(vmBaseDomain)) throw new Error("NVOS_VM_BASE_DOMAIN must be a valid hostname.");
   return {
     awsRegion: env.AWS_REGION?.trim() || "ap-south-1",
-    launchTemplateId: required("NVOS_EC2_LAUNCH_TEMPLATE_ID", env),
+    launchTemplateId: env.NVOS_EC2_LAUNCH_TEMPLATE_ID?.trim() || "",
+    windowsLaunchTemplateId: env.AWS_WINDOWS_LAUNCH_TEMPLATE_ID?.trim() || "",
     controlSecret: required("NVOS_CONTROL_SECRET", env),
     vmBaseDomain,
     caddyAdminUrl: (env.CADDY_ADMIN_URL?.trim() || "http://127.0.0.1:2019").replace(/\/$/, ""),

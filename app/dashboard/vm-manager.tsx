@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { VmStatus } from "@/db/schema";
+import type { VmOperatingSystem, VmStatus } from "@/db/schema";
 import {
   allowedVmActions,
   isTransitionalVmStatus,
@@ -15,6 +15,7 @@ export type PublicVm = {
   name: string;
   description: string | null;
   plan: string | null;
+  os: VmOperatingSystem;
   instanceType: string;
   slug: string;
   hostname: string;

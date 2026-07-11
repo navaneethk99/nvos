@@ -3,10 +3,10 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import { CaddyClient } from "./caddy-client";
 import type { ControlConfig } from "./config";
-import { VmService, VmServiceError } from "./vm-service";
+import { VmService, VmServiceError, type VmOperatingSystem } from "./vm-service";
 
 type Dependencies = { service?: VmService };
-type CreateBody = { vmId?: unknown; slug?: unknown; userId?: unknown; plan?: unknown };
+type CreateBody = { vmId?: unknown; slug?: unknown; userId?: unknown; plan?: unknown; os?: unknown };
 
 const INSTANCE_TYPES = {
   micro: "t3.micro",
@@ -19,6 +19,7 @@ type VmPlan = keyof typeof INSTANCE_TYPES;
 
 function isSlug(value: unknown): value is string { return typeof value === "string" && /^[a-z0-9]+(?:-[a-z0-9]+){2,3}$/.test(value); }
 function isVmPlan(value: unknown): value is VmPlan { return typeof value === "string" && value in INSTANCE_TYPES; }
+function isVmOperatingSystem(value: unknown): value is VmOperatingSystem { return value === "ubuntu" || value === "windows"; }
 
 export function buildApp(config: ControlConfig, dependencies: Dependencies = {}): FastifyInstance {
   const app = Fastify({ logger: true });
@@ -38,9 +39,10 @@ export function buildApp(config: ControlConfig, dependencies: Dependencies = {})
   app.get("/health", async () => ({ status: "ok" }));
 
   app.post<{ Body: CreateBody }>("/internal/vms", async (request, reply) => {
-    const { vmId, slug, userId, plan } = request.body ?? {};
-    if (typeof vmId !== "string" || !isSlug(slug) || typeof userId !== "string" || !isVmPlan(plan)) return reply.code(400).send({ error: "A supported VM plan is required." });
-    return reply.code(201).send(await service.create(vmId, slug, userId, plan));
+    const { vmId, slug, userId, plan, os } = request.body ?? {};
+    const vmOs = os ?? "ubuntu";
+    if (typeof vmId !== "string" || !isSlug(slug) || typeof userId !== "string" || !isVmPlan(plan) || !isVmOperatingSystem(vmOs)) return reply.code(400).send({ error: "A supported VM plan is required." });
+    return reply.code(201).send(await service.create(vmId, slug, userId, plan, vmOs));
   });
 
   app.post<{ Params: { id: string } }>("/internal/vms/:id/start", async (request) => service.start(request.params.id));

@@ -1,0 +1,1 @@
+ALTER TABLE "virtual_machine" ADD COLUMN "os" text DEFAULT 'ubuntu' NOT NULL;

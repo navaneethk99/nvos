@@ -2,24 +2,31 @@ import { and, desc, eq, lt } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
-import { virtualMachine } from "@/db/schema";
+import { type VmOperatingSystem, virtualMachine } from "@/db/schema";
 import { ControlServiceError, createVm, getVmStatus } from "@/lib/vm-control-client";
 import { getVmConfig } from "@/lib/vm-config";
 import { INSTANCE_TYPES, isVmPlan } from "@/lib/vm-plan";
-import { publicVm, requireVmUser, controlFailureResponse } from "@/lib/vm-route";
+import { publicVm, requireVmUser, controlFailureResponse, isVmOperatingSystem } from "@/lib/vm-route";
 import { generateUniqueVmSlug } from "@/lib/vm-slug";
 import { isTransitionalVmStatus } from "@/lib/vm-status";
 
 // Provisioning waits for the proxy to verify desktop readiness.
 export const maxDuration = 300;
 
-function parseCreateRequest(value: unknown) {
+type CreateVmRequest = {
+  name?: unknown;
+  description?: unknown;
+  plan?: unknown;
+  os?: unknown;
+};
+
+export function parseCreateRequest(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const { name, description, plan } = value as Record<string, unknown>;
+  const { name, description, plan, os } = value as CreateVmRequest;
   const cleanName = typeof name === "string" ? name.trim() : "";
   const cleanDescription = typeof description === "string" ? description.trim() : "";
-  if (!cleanName || cleanName.length > 80 || cleanDescription.length > 500 || !isVmPlan(plan)) return null;
-  return { name: cleanName, description: cleanDescription || null, plan };
+  if (!cleanName || cleanName.length > 80 || cleanDescription.length > 500 || !isVmPlan(plan) || (os !== undefined && !isVmOperatingSystem(os))) return null;
+  return { name: cleanName, description: cleanDescription || null, plan, os: (os ?? "ubuntu") as VmOperatingSystem };
 }
 
 export async function GET() {
@@ -66,14 +73,14 @@ export async function POST(request: Request) {
     const hostname = `${slug}.${getVmConfig().baseDomain}`;
     let vm: typeof virtualMachine.$inferSelect;
     try {
-      [vm] = await db.insert(virtualMachine).values({ userId: user.id, name: input.name, description: input.description, plan: input.plan, instanceType: INSTANCE_TYPES[input.plan], slug, hostname, status: "provisioning" }).returning();
+      [vm] = await db.insert(virtualMachine).values({ userId: user.id, name: input.name, description: input.description, plan: input.plan, os: input.os, instanceType: INSTANCE_TYPES[input.plan], slug, hostname, status: "provisioning" }).returning();
     } catch (error) {
       if (error && typeof error === "object" && "code" in error && (error as { code: string }).code === "23505") return NextResponse.json({ error: "That VM address is already in use. Please retry." }, { status: 409 });
       throw error;
     }
 
     try {
-      const controlled = await createVm({ vmId: vm.id, slug, userId: user.id, plan: input.plan });
+      const controlled = await createVm({ vmId: vm.id, slug, userId: user.id, plan: input.plan, os: input.os });
       const [updated] = await db.update(virtualMachine).set({ instanceId: controlled.instanceId, privateIp: controlled.privateIp, hostname: controlled.hostname, status: controlled.status, updatedAt: new Date() }).where(eq(virtualMachine.id, vm.id)).returning();
       return NextResponse.json({ vm: publicVm(updated) }, { status: controlled.status === "provisioning" || controlled.status === "starting" ? 202 : 201 });
     } catch (error) {
