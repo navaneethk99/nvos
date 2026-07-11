@@ -69,10 +69,22 @@ export function vmCreateRequest(
   return { name, description, plan, os };
 }
 
+export function desktopActionForOperatingSystem(
+  os: VmOperatingSystem,
+  url: string,
+) {
+  return os === "ubuntu"
+    ? { kind: "open" as const, url }
+    : {
+        kind: "pending" as const,
+        label: "Windows desktop integration pending",
+      };
+}
+
 const provisioningMessages = [
   "Spinning up your computer.",
   "Setting up a secure connection.",
-  "Preparing the Ubuntu desktop.",
+  "Preparing your personalised desktop.",
   "Warming up your workspace.",
 ] as const;
 
@@ -303,6 +315,10 @@ export function VmManager({ initialVms }: { initialVms: PublicVm[] }) {
         <section className="grid gap-5 xl:grid-cols-2">
           {visibleVms.map((vm) => {
             const actions = allowedVmActions(vm.status);
+            const desktopAction = desktopActionForOperatingSystem(
+              vm.os,
+              vm.url,
+            );
             return (
               <article
                 className="motion-instance-card border border-[#0d2236]/20 bg-white/35"
@@ -335,7 +351,9 @@ export function VmManager({ initialVms }: { initialVms: PublicVm[] }) {
                         ? "Applying this instance operation."
                         : vm.status === "stopped"
                           ? "This instance is stopped."
-                          : "This Ubuntu desktop is ready."}
+                          : vm.os === "windows"
+                            ? "Windows desktop integration pending."
+                            : "This Ubuntu desktop is ready."}
                   </p>
                   {isTransitionalVmStatus(vm.status) ? (
                     <div className="mt-5 h-1 overflow-hidden bg-[#0d2236]/10">
@@ -343,15 +361,20 @@ export function VmManager({ initialVms }: { initialVms: PublicVm[] }) {
                     </div>
                   ) : null}
                   <div className="mt-6 flex flex-wrap gap-3">
-                    {actions.open ? (
+                    {actions.open && desktopAction.kind === "open" ? (
                       <a
                         className="bg-[#3973ff] px-4 py-3 font-mono text-[11px] font-semibold tracking-[.1em] text-white"
-                        href={vm.url}
+                        href={desktopAction.url}
                         rel="noopener noreferrer"
                         target="_blank"
                       >
                         OPEN DESKTOP
                       </a>
+                    ) : null}
+                    {actions.open && desktopAction.kind === "pending" ? (
+                      <span className="border border-[#0d2236]/20 px-4 py-3 font-mono text-[11px] text-[#0d2236]/50">
+                        {desktopAction.label}
+                      </span>
                     ) : null}
                     {actions.start ? (
                       <button

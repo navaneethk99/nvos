@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   compatiblePlanForOperatingSystem,
+  desktopActionForOperatingSystem,
   defaultVmOperatingSystem,
   isPlanAvailableForOperatingSystem,
   vmCreateRequest,
@@ -34,5 +35,19 @@ describe("VM launch form", () => {
   it("keeps all Ubuntu plans available", () => {
     expect(isPlanAvailableForOperatingSystem("ubuntu", "micro")).toBe(true);
     expect(compatiblePlanForOperatingSystem("ubuntu", "micro")).toBe("micro");
+  });
+
+  it("keeps the Ubuntu desktop action as the VM URL", () => {
+    expect(desktopActionForOperatingSystem("ubuntu", "https://archie.vm.nvos.in")).toEqual({
+      kind: "open",
+      url: "https://archie.vm.nvos.in",
+    });
+  });
+
+  it("replaces the Windows desktop action with the pending integration status", () => {
+    expect(desktopActionForOperatingSystem("windows", "https://archie.vm.nvos.in")).toEqual({
+      kind: "pending",
+      label: "Windows desktop integration pending",
+    });
   });
 });
