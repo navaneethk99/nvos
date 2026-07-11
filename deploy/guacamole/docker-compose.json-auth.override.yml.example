@@ -1,0 +1,6 @@
+services:
+  guacamole:
+    environment:
+      # Enables guacamole-auth-json without disabling PostgreSQL authentication.
+      JSON_ENABLED: "true"
+      JSON_SECRET_KEY: "${GUACAMOLE_JSON_SECRET:?Set GUACAMOLE_JSON_SECRET to a 32-character hexadecimal key}"
