@@ -57,7 +57,7 @@ async function request(path: string, method: "GET" | "POST", body?: unknown) {
     const response = await fetch(`${controlUrl}${path}`, {
       method,
       headers: { Authorization: `Bearer ${controlSecret}`, "Content-Type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
       signal: controller.signal,
     });
     if (!response.ok) {
