@@ -68,6 +68,24 @@ export async function POST() {
       const [updated] = await db.update(virtualMachine).set({ instanceId: controlled.instanceId, privateIp: controlled.privateIp, hostname: controlled.hostname, status: controlled.status, updatedAt: new Date() }).where(eq(virtualMachine.id, vm.id)).returning();
       return NextResponse.json({ vm: publicVm(updated) }, { status: controlled.status === "provisioning" || controlled.status === "starting" ? 202 : 201 });
     } catch (error) {
+      const outcomeUnknown = error instanceof ControlServiceError && (
+        error.kind === "timeout" || error.statusCode === undefined
+      );
+      if (outcomeUnknown) {
+        // The proxy may have accepted the request even though its response was
+        // interrupted. Preserve provisioning so status polling can reconcile it.
+        const [pending] = await db.update(virtualMachine).set({
+          status: "provisioning",
+          failureReason: null,
+          updatedAt: new Date(),
+        }).where(eq(virtualMachine.id, vm.id)).returning();
+        console.warn("VM provisioning outcome is unknown; awaiting reconciliation", {
+          vmId: vm.id,
+          userId: user.id,
+          errorKind: error.kind,
+        });
+        return NextResponse.json({ vm: publicVm(pending) }, { status: 202 });
+      }
       await db.update(virtualMachine).set({ status: "failed", failureReason: "Unable to provision the VM. Please try again.", updatedAt: new Date() }).where(eq(virtualMachine.id, vm.id));
       console.error("VM provisioning failed", {
         vmId: vm.id,
