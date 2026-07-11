@@ -8,6 +8,9 @@ import { getVmConfig } from "@/lib/vm-config";
 import { publicVm, requireVmUser, controlFailureResponse } from "@/lib/vm-route";
 import { generateUniqueVmSlug } from "@/lib/vm-slug";
 
+// Provisioning waits for the proxy to verify desktop readiness.
+export const maxDuration = 300;
+
 const terminalStatuses: VmStatus[] = ["terminated", "failed"];
 
 export async function GET() {

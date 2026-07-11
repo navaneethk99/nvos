@@ -3,7 +3,9 @@ import "server-only";
 import { getVmConfig } from "@/lib/vm-config";
 import type { VmStatus } from "@/db/schema";
 
-const timeoutMs = 30_000;
+// noVNC readiness can take several minutes after EC2 reports running.
+// Keep this below the route's platform execution limit.
+const timeoutMs = 270_000;
 
 export class ControlServiceError extends Error {
   constructor(
