@@ -5,16 +5,16 @@ import { describe, expect, it, vi } from "vitest";
 import type { ControlConfig } from "../src/config";
 import { VmService } from "../src/vm-service";
 
-const config: ControlConfig = { awsRegion: "ap-south-1", launchTemplateId: "lt-ubuntu", windowsLaunchTemplateId: "lt-windows", guacamoleUrl: "http://guacamole.test", guacamoleUsername: "guacadmin", guacamolePassword: "secret", guacamoleRdpPassword: "windows-secret", controlSecret: "secret", vmBaseDomain: "vm.nvos.in", caddyAdminUrl: "http://127.0.0.1:2019", host: "127.0.0.1", port: 3001 };
+const config: ControlConfig = { awsRegion: "ap-south-1", launchTemplateId: "lt-ubuntu", windowsLaunchTemplateId: "lt-windows", guacamoleUrl: "http://guacamole.test", guacamoleUsername: "guacadmin", guacamolePassword: "secret", guacamoleRdpPassword: "windows-secret", guacamoleJsonSecret: "0123456789abcdef0123456789abcdef", controlSecret: "secret", vmBaseDomain: "vm.nvos.in", caddyAdminUrl: "http://127.0.0.1:2019", host: "127.0.0.1", port: 3001 };
 
 type ReadinessOptions = {
   fetchImpl?: typeof fetch;
   connectImpl?: (options: { host: string; port: number }) => Socket;
 };
 
-function createService(overrides: Partial<ControlConfig> = {}, readiness: ReadinessOptions = {}) {
-  let state = "running";
-  const instance = { InstanceId: "i-123", PrivateIpAddress: "172.31.1.4", PublicIpAddress: "13.1.2.3", State: { Name: state }, Tags: [{ Key: "nvos:slug", Value: "terry-bobby-black" }, { Key: "nvos:os", Value: "windows" }] };
+function createService(overrides: Partial<ControlConfig> = {}, readiness: ReadinessOptions = {}, instanceOptions: { os?: "ubuntu" | "windows"; ownerId?: string; state?: string } = {}) {
+  let state = instanceOptions.state ?? "running";
+  const instance = { InstanceId: "i-123", PrivateIpAddress: "172.31.1.4", PublicIpAddress: "13.1.2.3", State: { Name: state }, Tags: [{ Key: "nvos:slug", Value: "terry-bobby-black" }, { Key: "nvos:os", Value: instanceOptions.os ?? "windows" }, { Key: "nvos:user-id", Value: instanceOptions.ownerId ?? "user-1" }] };
   const send = vi.fn(async (command: unknown) => {
     if (command instanceof RunInstancesCommand) return { Instances: [instance] };
     if (command instanceof TerminateInstancesCommand) {
@@ -26,10 +26,11 @@ function createService(overrides: Partial<ControlConfig> = {}, readiness: Readin
   });
   const caddy = { addRoute: vi.fn(), removeRoute: vi.fn() } as never;
   const guacamole = { createRdpConnection: vi.fn().mockResolvedValue("42"), deleteRdpConnection: vi.fn().mockResolvedValue(undefined) };
+  const guacamoleJsonAuth = { createWindowsLaunch: vi.fn().mockResolvedValue({ launchUrl: "https://guacamole.test/#/client/json/c/nvos-vm-1?token=token" }) };
   const logger = { info: vi.fn(), error: vi.fn() };
   const fetchImpl = readiness.fetchImpl ?? vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
-  const service = new VmService({ send } as never, caddy, { ...config, ...overrides }, logger, guacamole, fetchImpl, readiness.connectImpl);
-  return { caddy, fetchImpl, guacamole, logger, send, service };
+  const service = new VmService({ send } as never, caddy, { ...config, ...overrides }, logger, guacamole, guacamoleJsonAuth, fetchImpl, readiness.connectImpl);
+  return { caddy, fetchImpl, guacamole, guacamoleJsonAuth, logger, send, service };
 }
 
 describe("VmService", () => {
@@ -73,6 +74,24 @@ describe("VmService", () => {
     await service.terminate("vm-1");
     expect(guacamole.deleteRdpConnection).toHaveBeenCalledWith("vm-1");
     expect(caddy.removeRoute).not.toHaveBeenCalled();
+  });
+
+  it("creates a JSON-auth launch only for the Windows VM owner", async () => {
+    const { guacamoleJsonAuth, service } = createService();
+    await expect(service.createWindowsDesktopLaunch("vm-1", "user-1")).resolves.toEqual({ launchUrl: "https://guacamole.test/#/client/json/c/nvos-vm-1?token=token" });
+    expect(guacamoleJsonAuth.createWindowsLaunch).toHaveBeenCalledWith("vm-1", "user-1", "172.31.1.4");
+  });
+
+  it("rejects Windows desktop launch requests for another user", async () => {
+    const { service } = createService();
+    await expect(service.createWindowsDesktopLaunch("vm-1", "other-user")).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it("rejects JSON-auth launches for Ubuntu or stopped VMs", async () => {
+    const ubuntu = createService({}, {}, { os: "ubuntu" });
+    await expect(ubuntu.service.createWindowsDesktopLaunch("vm-1", "user-1")).rejects.toMatchObject({ statusCode: 400 });
+    const stopped = createService({}, {}, { state: "stopped" });
+    await expect(stopped.service.createWindowsDesktopLaunch("vm-1", "user-1")).rejects.toMatchObject({ statusCode: 409 });
   });
 
   it("fails before calling AWS when Windows is not configured", async () => {

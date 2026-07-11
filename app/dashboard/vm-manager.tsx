@@ -75,10 +75,7 @@ export function desktopActionForOperatingSystem(
 ) {
   return os === "ubuntu"
     ? { kind: "open" as const, url }
-    : {
-        kind: "pending" as const,
-        label: "Windows desktop integration pending",
-      };
+    : { kind: "windows" as const };
 }
 
 const provisioningMessages = [
@@ -286,6 +283,21 @@ export function VmManager({ initialVms }: { initialVms: PublicVm[] }) {
     }
   }
 
+  async function openWindowsDesktop(vmId: string) {
+    if (pending) return;
+    setPending(`${vmId}:open`);
+    setError(null);
+    try {
+      const response = await fetch(`/api/vms/${vmId}/desktop`, { method: "POST" });
+      const data = (await response.json()) as { launchUrl?: string; error?: string };
+      if (!response.ok || !data.launchUrl) throw new Error(data.error || "The Windows desktop is unavailable.");
+      window.location.assign(data.launchUrl);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "The Windows desktop is unavailable.");
+      setPending(null);
+    }
+  }
+
   const visibleVms = vms.filter((vm) => vm.status !== "terminated");
   return (
     <>
@@ -352,7 +364,7 @@ export function VmManager({ initialVms }: { initialVms: PublicVm[] }) {
                         : vm.status === "stopped"
                           ? "This instance is stopped."
                           : vm.os === "windows"
-                            ? "Windows desktop integration pending."
+                            ? "Windows desktop is ready."
                             : "This Ubuntu desktop is ready."}
                   </p>
                   {isTransitionalVmStatus(vm.status) ? (
@@ -371,10 +383,15 @@ export function VmManager({ initialVms }: { initialVms: PublicVm[] }) {
                         OPEN DESKTOP
                       </a>
                     ) : null}
-                    {actions.open && desktopAction.kind === "pending" ? (
-                      <span className="border border-[#0d2236]/20 px-4 py-3 font-mono text-[11px] text-[#0d2236]/50">
-                        {desktopAction.label}
-                      </span>
+                    {actions.open && desktopAction.kind === "windows" ? (
+                      <button
+                        className="bg-[#3973ff] px-4 py-3 font-mono text-[11px] font-semibold tracking-[.1em] text-white disabled:opacity-60"
+                        disabled={pending !== null}
+                        onClick={() => void openWindowsDesktop(vm.id)}
+                        type="button"
+                      >
+                        OPEN DESKTOP
+                      </button>
                     ) : null}
                     {actions.start ? (
                       <button

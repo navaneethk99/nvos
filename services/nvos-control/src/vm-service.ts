@@ -12,6 +12,7 @@ import { connect, type Socket } from "node:net";
 import type { ControlConfig } from "./config";
 import { CaddyClient } from "./caddy-client";
 import { type GuacamoleClient } from "./guacamole-client";
+import { type GuacamoleJsonAuthClient } from "./guacamole-json-auth";
 
 const stateTimeoutMs = 10 * 60 * 1_000;
 const desktopTimeoutMs = 5 * 60 * 1_000;
@@ -34,6 +35,7 @@ export class VmServiceError extends Error {
 export type VmResult = { vmId: string; slug: string; instanceId: string; privateIp: string; status: "running" | "stopped" | "terminated"; hostname: string; url: string };
 type Logger = { info: (data: object, message?: string) => void; error: (data: object, message?: string) => void };
 type GuacamoleService = Pick<GuacamoleClient, "createRdpConnection" | "deleteRdpConnection">;
+type GuacamoleJsonAuthService = Pick<GuacamoleJsonAuthClient, "createWindowsLaunch">;
 
 function sleep(ms: number) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
@@ -44,6 +46,7 @@ export class VmService {
     private readonly config: ControlConfig,
     private readonly logger: Logger,
     private readonly guacamole: GuacamoleService,
+    private readonly guacamoleJsonAuth: GuacamoleJsonAuthService,
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly connectImpl: (options: { host: string; port: number }) => Socket = connect,
   ) {}
@@ -164,6 +167,17 @@ export class VmService {
       if (error instanceof VmServiceError) throw error;
       throw new VmServiceError("AWS failed to provision the VM.");
     }
+  }
+
+  async createWindowsDesktopLaunch(vmId: string, userId: string) {
+    const instance = await this.findInstance(vmId);
+    const ownerId = instance.Tags?.find((tag) => tag.Key === "nvos:user-id")?.Value;
+    const os = instance.Tags?.find((tag) => tag.Key === "nvos:os")?.Value;
+    if (ownerId !== userId) throw new VmServiceError("You do not own this VM.", 403);
+    if (os !== "windows") throw new VmServiceError("This VM is not a Windows desktop.", 400);
+    if (instance.State?.Name !== "running") throw new VmServiceError("The Windows VM is not running.", 409);
+    if (!instance.PrivateIpAddress) throw new VmServiceError("EC2 instance has no private IP.");
+    return this.guacamoleJsonAuth.createWindowsLaunch(vmId, userId, instance.PrivateIpAddress);
   }
 
   async start(vmId: string) {

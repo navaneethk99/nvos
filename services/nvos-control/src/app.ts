@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { CaddyClient } from "./caddy-client";
 import type { ControlConfig } from "./config";
 import { GuacamoleClient } from "./guacamole-client";
+import { GuacamoleJsonAuthClient } from "./guacamole-json-auth";
 import { VmService, VmServiceError, type VmOperatingSystem } from "./vm-service";
 
 type Dependencies = { service?: VmService };
@@ -30,6 +31,7 @@ export function buildApp(config: ControlConfig, dependencies: Dependencies = {})
     config,
     app.log,
     new GuacamoleClient(config.guacamoleUrl, config.guacamoleUsername, config.guacamolePassword, config.guacamoleRdpPassword),
+    new GuacamoleJsonAuthClient(config.guacamoleUrl, config.guacamoleJsonSecret, config.guacamoleRdpPassword),
   );
 
   app.addHook("onRequest", async (request, reply) => {
@@ -59,6 +61,10 @@ export function buildApp(config: ControlConfig, dependencies: Dependencies = {})
   // Compatibility for the existing dashboard client, which currently sends POST.
   app.post<{ Params: { id: string } }>("/internal/vms/:id/terminate", async (request) => terminate(request.params.id));
   app.get<{ Params: { id: string } }>("/internal/vms/:id", async (request) => service.status(request.params.id));
+  app.post<{ Params: { id: string }; Body: { userId?: unknown } }>("/internal/vms/:id/windows-desktop", async (request, reply) => {
+    if (typeof request.body?.userId !== "string") return reply.code(400).send({ error: "A VM user is required." });
+    return service.createWindowsDesktopLaunch(request.params.id, request.body.userId);
+  });
 
   return app;
 }

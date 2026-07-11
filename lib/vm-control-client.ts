@@ -50,7 +50,7 @@ function parseControlVm(value: unknown): ControlVm {
   };
 }
 
-async function request(path: string, method: "GET" | "POST", body?: unknown) {
+async function request<T>(path: string, method: "GET" | "POST", body: unknown, parse: (value: unknown) => T) {
   const { controlSecret, controlUrl } = getVmConfig();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -67,7 +67,7 @@ async function request(path: string, method: "GET" | "POST", body?: unknown) {
     }
     let data: unknown;
     try { data = await response.json(); } catch { throw new ControlServiceError("The VM control service returned invalid JSON.", "internal"); }
-    return parseControlVm(data);
+    return parse(data);
   } catch (error) {
     if (error instanceof ControlServiceError) throw error;
     if (error instanceof DOMException && error.name === "AbortError") throw new ControlServiceError("The VM control service timed out.", "timeout");
@@ -77,8 +77,14 @@ async function request(path: string, method: "GET" | "POST", body?: unknown) {
   }
 }
 
-export function createVm(input: { vmId: string; slug: string; userId: string; plan: VmPlan; os: VmOperatingSystem }) { return request("/internal/vms", "POST", input); }
-export function startVm(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}/start`, "POST"); }
-export function stopVm(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}/stop`, "POST"); }
-export function terminateVm(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}/terminate`, "POST"); }
-export function getVmStatus(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}`, "GET"); }
+function parseWindowsDesktopLaunch(value: unknown) {
+  if (!value || typeof value !== "object" || typeof (value as { launchUrl?: unknown }).launchUrl !== "string") throw new ControlServiceError("The VM control service returned an invalid response.", "internal");
+  return { launchUrl: (value as { launchUrl: string }).launchUrl };
+}
+
+export function createVm(input: { vmId: string; slug: string; userId: string; plan: VmPlan; os: VmOperatingSystem }) { return request("/internal/vms", "POST", input, parseControlVm); }
+export function startVm(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}/start`, "POST", undefined, parseControlVm); }
+export function stopVm(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}/stop`, "POST", undefined, parseControlVm); }
+export function terminateVm(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}/terminate`, "POST", undefined, parseControlVm); }
+export function getVmStatus(vmId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}`, "GET", undefined, parseControlVm); }
+export function createWindowsDesktopLaunch(vmId: string, userId: string) { return request(`/internal/vms/${encodeURIComponent(vmId)}/windows-desktop`, "POST", { userId }, parseWindowsDesktopLaunch); }

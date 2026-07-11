@@ -44,10 +44,9 @@ describe("VM launch form", () => {
     });
   });
 
-  it("replaces the Windows desktop action with the pending integration status", () => {
+  it("uses the authenticated Windows desktop launch action", () => {
     expect(desktopActionForOperatingSystem("windows", "https://archie.vm.nvos.in")).toEqual({
-      kind: "pending",
-      label: "Windows desktop integration pending",
+      kind: "windows",
     });
   });
 });

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/vm-config", () => ({ getVmConfig: () => ({ controlUrl: "https://control.test", controlSecret: "secret", baseDomain: "vm.nvos.in" }) }));
 
-import { ControlServiceError, createVm, terminateVm } from "@/lib/vm-control-client";
+import { ControlServiceError, createVm, createWindowsDesktopLaunch, terminateVm } from "@/lib/vm-control-client";
 
 describe("VM control client", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -24,5 +24,13 @@ describe("VM control client", () => {
     vi.stubGlobal("fetch", fetchMock);
     await terminateVm("vm-1");
     expect(fetchMock.mock.calls[0][1].body).toBe("{}");
+  });
+
+  it("sends only the VM and user IDs for a Windows desktop launch", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ launchUrl: "https://guacamole.test/#/client/json/c/nvos-vm-1?token=short-token" })));
+    vi.stubGlobal("fetch", fetchMock);
+    await createWindowsDesktopLaunch("vm-1", "user-1");
+    expect(fetchMock.mock.calls[0][0]).toBe("https://control.test/internal/vms/vm-1/windows-desktop");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ userId: "user-1" });
   });
 });
