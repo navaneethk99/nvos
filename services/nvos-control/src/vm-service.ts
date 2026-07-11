@@ -19,7 +19,7 @@ export class VmServiceError extends Error {
   constructor(message: string, readonly statusCode = 502) { super(message); this.name = "VmServiceError"; }
 }
 
-export type VmResult = { vmId: string; instanceId: string; privateIp: string; status: "running" | "stopped" | "terminated"; hostname: string; url: string };
+export type VmResult = { vmId: string; slug: string; instanceId: string; privateIp: string; status: "running" | "stopped" | "terminated"; hostname: string; url: string };
 type Logger = { info: (data: object, message?: string) => void; error: (data: object, message?: string) => void };
 
 function sleep(ms: number) { return new Promise((resolve) => setTimeout(resolve, ms)); }
@@ -37,7 +37,7 @@ export class VmService {
   private result(vmId: string, slug: string, instance: Instance, status: VmResult["status"]): VmResult {
     if (!instance.InstanceId || !instance.PrivateIpAddress) throw new VmServiceError("EC2 did not return an instance ID and private IP.");
     const hostname = this.hostname(slug);
-    return { vmId, instanceId: instance.InstanceId, privateIp: instance.PrivateIpAddress, status, hostname, url: `https://${hostname}` };
+    return { vmId, slug, instanceId: instance.InstanceId, privateIp: instance.PrivateIpAddress, status, hostname, url: `https://${hostname}` };
   }
 
   private async findInstance(vmId: string) {

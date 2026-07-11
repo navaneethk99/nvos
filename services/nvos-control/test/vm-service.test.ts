@@ -16,6 +16,6 @@ describe("VmService", () => {
     expect(launch.input.LaunchTemplate).toEqual({ LaunchTemplateId: "lt-test", Version: "$Default" });
     expect(launch.input.TagSpecifications?.[0].Tags).toContainEqual({ Key: "nvos:vm-id", Value: "vm-1" });
     expect(caddy.addRoute).toHaveBeenCalledWith("terry-bobby-black.vm.nvos.in", "172.31.1.4");
-    expect(result).toMatchObject({ instanceId: "i-123", status: "running" });
+    expect(result).toMatchObject({ instanceId: "i-123", slug: "terry-bobby-black", status: "running" });
   });
 });
