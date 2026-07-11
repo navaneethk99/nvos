@@ -3,10 +3,11 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { type VmStatus, virtualMachine } from "@/db/schema";
-import { ControlServiceError, createVm } from "@/lib/vm-control-client";
+import { ControlServiceError, createVm, getVmStatus } from "@/lib/vm-control-client";
 import { getVmConfig } from "@/lib/vm-config";
 import { publicVm, requireVmUser, controlFailureResponse } from "@/lib/vm-route";
 import { generateUniqueVmSlug } from "@/lib/vm-slug";
+import { isTransitionalVmStatus } from "@/lib/vm-status";
 
 // Provisioning waits for the proxy to verify desktop readiness.
 export const maxDuration = 300;
@@ -20,7 +21,29 @@ export async function GET() {
   // A control service outage must not leave old provisioning records blocking users forever.
   await db.update(virtualMachine).set({ status: "failed", failureReason: "Provisioning did not complete. Please try again.", updatedAt: new Date() })
     .where(and(eq(virtualMachine.userId, user.id), eq(virtualMachine.status, "provisioning"), lt(virtualMachine.createdAt, new Date(Date.now() - 10 * 60 * 1_000))));
-  const vms = await db.select().from(virtualMachine).where(eq(virtualMachine.userId, user.id)).orderBy(desc(virtualMachine.createdAt));
+  const storedVms = await db.select().from(virtualMachine).where(eq(virtualMachine.userId, user.id)).orderBy(desc(virtualMachine.createdAt));
+  const activeVm = storedVms.find((vm) => vm.status !== "terminated" && vm.status !== "failed");
+  let vms = storedVms;
+  if (activeVm && isTransitionalVmStatus(activeVm.status)) {
+    try {
+      const controlled = await getVmStatus(activeVm.id);
+      const [updated] = await db.update(virtualMachine).set({
+        status: controlled.status,
+        instanceId: controlled.instanceId ?? activeVm.instanceId,
+        privateIp: controlled.privateIp ?? activeVm.privateIp,
+        failureReason: null,
+        stoppedAt: controlled.status === "stopped" ? new Date() : activeVm.stoppedAt,
+        terminatedAt: controlled.status === "terminated" ? new Date() : activeVm.terminatedAt,
+        updatedAt: new Date(),
+      }).where(eq(virtualMachine.id, activeVm.id)).returning();
+      vms = storedVms.map((vm) => vm.id === updated.id ? updated : vm);
+    } catch (error) {
+      console.warn("Active VM reconciliation was unavailable", {
+        vmId: activeVm.id,
+        errorKind: error instanceof ControlServiceError ? error.kind : error instanceof Error ? error.name : "UnknownError",
+      });
+    }
+  }
   return NextResponse.json({ vms: vms.map(publicVm) }, { headers: { "Cache-Control": "no-store" } });
 }
 
